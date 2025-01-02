@@ -5,5 +5,5 @@ const (
 	recvTokenAddr = "localhost:8081" // 游戏服务器向代理服务器发送 token 的 HTTP 地址
 )
 
-type Server struct {
+type ProxyServer struct {
 }
