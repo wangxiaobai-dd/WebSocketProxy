@@ -75,6 +75,7 @@ func (p *ProxyServer) Run() {
 		if err != nil {
 			log.Fatal("HTTP server failed to start:", err)
 		}
+		log.Println("HTTP server run")
 	}()
 
 	go func() {
@@ -82,6 +83,7 @@ func (p *ProxyServer) Run() {
 		if err != nil {
 			log.Fatal("WSS server failed to start:", err)
 		}
+		log.Println("WSS server run")
 	}()
 
 	ticker := time.NewTicker(time.Second * 5)
@@ -91,4 +93,8 @@ func (p *ProxyServer) Run() {
 			p.checkOverdueToken()
 		}
 	}()
+
+	log.Println("Server run")
+
+	select {}
 }
