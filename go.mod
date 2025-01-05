@@ -2,4 +2,4 @@ module ZTWssProxy
 
 go 1.22
 
-require golang.org/x/sync v0.10.0
+require github.com/gorilla/websocket v1.5.3

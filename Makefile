@@ -1,7 +1,7 @@
 GO := go
 
 .PHONY: all
-all: tidy build
+all:  build
 
 .PHONY: tidy
 tidy:
@@ -10,6 +10,11 @@ tidy:
 .PHONY: build
 build:
 	@$(GO) build run/main.go
+
+
+.PHONY: client
+client:
+		@$(GO) build run/mock_client.go
 
 .PHONY: clean
 clean:
