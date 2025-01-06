@@ -1,10 +1,12 @@
 package proxyserver
 
 import (
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"ZTWssProxy/internal/network"
@@ -37,7 +39,7 @@ func NewProxyServer() *ProxyServer {
 
 func (ps *ProxyServer) registerHandlers() {
 	ps.httpServer.AddRoute("/token", ps.handleGameSrvToken)
-	ps.wsServer.AddRoute("/ws", ps.handleClientConnect)
+	ps.wsServer.AddRoute("/ws/{zoneID}/{gatePort}/{token}", ps.handleClientConnect)
 }
 
 // 接收游戏服务器token
@@ -64,6 +66,13 @@ func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request
 // url : https://website/zoneID/GatePort/token
 func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Request) {
 
+	vars := mux.Vars(r)
+	zoneID := vars["zoneID"]
+	gatePort := vars["gatePort"]
+	token := vars["token"]
+
+	log.Println("Connecting to zone:", zoneID, "gate:", gatePort, "token:", token)
+
 	conn, err := ps.wsServer.UpgradeConnection(w, r, nil)
 
 	if err != nil {
@@ -71,6 +80,9 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	defer conn.Close()
+
+	segments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	log.Println(segments)
 
 }
 

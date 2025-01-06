@@ -1,41 +1,44 @@
 package main
 
 import (
-	"bytes"
+	"ZTWssProxy/configs"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-
-	"ZTWssProxy/configs"
+	"github.com/gorilla/websocket"
+	"log"
 )
 
 func main() {
-	url := fmt.Sprintf("https://%s/ws", configs.ClientConnAddr)
-	data := []byte(`{"key":"value"}`)
+	url := fmt.Sprintf("wss://%s/ws/zone:69000/5240/1000", configs.ClientConnAddr)
+	//url := fmt.Sprintf("https://%s/ws/zone:69000/5240/1000", configs.ClientConnAddr)
 
 	// 创建 HTTP 客户端
-	tr := &http.Transport{
+
+	dialer := &websocket.Dialer{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr}
 
-	// 发送 POST 请求
-	resp, err := client.Post(url, "application/json", bytes.NewBuffer(data))
+	conn, _, err := dialer.Dial(url, nil)
 	if err != nil {
-		fmt.Println("Error sending POST request:", err)
+		log.Fatalf("Failed to connect to WebSocket server: %v", err)
+	}
+	defer conn.Close()
+
+	// 如果需要发送数据，可以使用 conn.WriteMessage
+	message := []byte(`{"key":"value"}`)
+	err = conn.WriteMessage(websocket.TextMessage, message)
+	if err != nil {
+		log.Printf("Failed to send WebSocket message: %v", err)
 		return
 	}
-	defer resp.Body.Close() // 确保在函数结束时关闭响应体
 
-	// 读取响应内容
-	body, err := ioutil.ReadAll(resp.Body)
+	// 接收服务器的响应
+	_, response, err := conn.ReadMessage()
 	if err != nil {
-		fmt.Println("Error reading response body:", err)
+		log.Printf("Failed to read WebSocket message: %v", err)
 		return
 	}
 
-	// 打印响应状态码和内容
-	fmt.Println("Response Status Code:", resp.StatusCode)
-	fmt.Println("Response Body:", string(body))
+	// 打印响应内容
+	fmt.Printf("Response from server: %s\n", string(response))
 }

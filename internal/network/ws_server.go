@@ -8,17 +8,18 @@ import (
 
 	"ZTWssProxy/configs"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
 type WSServer struct {
-	mux      *http.ServeMux
+	router   *mux.Router
 	upgrader *websocket.Upgrader
 }
 
 func NewWSServer() *WSServer {
 	return &WSServer{
-		mux: http.NewServeMux(),
+		router: mux.NewRouter(),
 		upgrader: &websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
@@ -26,7 +27,7 @@ func NewWSServer() *WSServer {
 }
 
 func (ws *WSServer) AddRoute(path string, handlerFunc http.HandlerFunc) {
-	ws.mux.HandleFunc(path, handlerFunc)
+	ws.router.HandleFunc(path, handlerFunc)
 }
 
 func (ws *WSServer) UpgradeConnection(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (*websocket.Conn, error) {
@@ -46,7 +47,7 @@ func (ws *WSServer) Run() {
 
 	server := &http.Server{
 		Addr:         configs.ClientConnAddr, // 监听的地址和端口
-		Handler:      ws.mux,                 // 设置请求处理器
+		Handler:      ws.router,              // 设置请求处理器
 		ReadTimeout:  10 * time.Second,       // 设置读取超时
 		WriteTimeout: 10 * time.Second,       // 设置写入超时
 		IdleTimeout:  60 * time.Second,       // 设置空闲超时

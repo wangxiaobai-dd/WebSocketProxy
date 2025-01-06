@@ -10,7 +10,7 @@ tidy:
 .PHONY: build
 build:
 	@$(GO) build run/main.go
-
+	@$(GO) build run/mock_client.go
 
 .PHONY: client
 client:
