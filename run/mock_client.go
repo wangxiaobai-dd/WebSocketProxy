@@ -1,16 +1,17 @@
 package main
 
 import (
-	"ZTWssProxy/configs"
 	"bytes"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"ZTWssProxy/configs"
 )
 
 func main() {
-	url := fmt.Sprintf("https://%s", configs.ClientConnAddr)
+	url := fmt.Sprintf("https://%s/ws", configs.ClientConnAddr)
 	data := []byte(`{"key":"value"}`)
 
 	// 创建 HTTP 客户端

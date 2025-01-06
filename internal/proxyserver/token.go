@@ -2,6 +2,7 @@ package proxyserver
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -35,11 +36,17 @@ func (tm *TokenManager) createTokenWithRequest(r *http.Request) *Token {
 	return t
 }
 
-func (tm *TokenManager) Add(t *Token) {
-	tm.tokens.Store(t.loginTempID, t)
+func (tm *TokenManager) contains(t *Token) bool {
+	_, ok := tm.tokens.Load(t)
+	return ok
 }
 
-func (tm *TokenManager) Get(loginTempID uint64) (Token, bool) {
+func (tm *TokenManager) add(t *Token) {
+	tm.tokens.Store(t.loginTempID, t)
+	log.Println("Add token:", t.info())
+}
+
+func (tm *TokenManager) get(loginTempID uint64) (Token, bool) {
 	val, ok := tm.tokens.Load(loginTempID)
 	if ok {
 		return val.(Token), true
@@ -47,6 +54,10 @@ func (tm *TokenManager) Get(loginTempID uint64) (Token, bool) {
 	return Token{}, false
 }
 
-func (tm *TokenManager) Delete(loginTempID uint64) {
+func (tm *TokenManager) delete(loginTempID uint64) {
 	tm.tokens.Delete(loginTempID)
+}
+
+func (tm *TokenManager) validate(t *Token) {
+
 }

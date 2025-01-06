@@ -1,21 +1,25 @@
 package network
 
 import (
-	"ZTWssProxy/configs"
 	"log"
 	"net/http"
+
+	"ZTWssProxy/configs"
 )
 
 type HttpServer struct {
-}
-type HttpHandler struct {
-}
-
-func (handler *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
+	mux *http.ServeMux
 }
 
-func (s *HttpServer) Run() {
+func NewHttpServer() *HttpServer {
+	return &HttpServer{mux: http.NewServeMux()}
+}
+
+func (hs *HttpServer) AddRoute(path string, handlerFunc http.HandlerFunc) {
+	hs.mux.HandleFunc(path, handlerFunc)
+}
+
+func (hs *HttpServer) Run() {
 
 	httpServer := &http.Server{
 		Addr: configs.GameTokenAddr,
@@ -28,4 +32,8 @@ func (s *HttpServer) Run() {
 	}()
 
 	log.Println("HTTP server run")
+}
+
+func (hs *HttpServer) Close() {
+	log.Println("HTTP server close")
 }

@@ -1,12 +1,13 @@
 package proxyserver
 
 import (
-	"ZTWssProxy/internal/network"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	"ZTWssProxy/internal/network"
 )
 
 type connWrapper struct {
@@ -29,15 +30,17 @@ type ProxyServer struct {
 func NewProxyServer() *ProxyServer {
 	return &ProxyServer{
 		tokenManager: &TokenManager{},
-		wsServer:     &network.WSServer{},
-		httpServer:   &network.HttpServer{},
+		wsServer:     network.NewWSServer(),
+		httpServer:   network.NewHttpServer(),
 	}
 }
 
-func (ps *ProxyServer) RegisterHandlers() {
-
+func (ps *ProxyServer) registerHandlers() {
+	ps.httpServer.AddRoute("/token", ps.handleGameSrvToken)
+	ps.wsServer.AddRoute("/ws", ps.handleClientConnect)
 }
 
+// 接收游戏服务器token
 func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		log.Println("Invalid request method")
@@ -50,16 +53,25 @@ func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	t := ps.tokenManager.createTokenWithRequest(r)
+	if ps.tokenManager.contains(t) {
+		log.Println("Token already exists", t.info())
+		return
+	}
+	ps.tokenManager.add(t)
 }
 
 // url : https://website/zoneID/GatePort/token
 func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Request) {
-	//conn, err := ps.upgrader.Upgrade(w, r, nil)
-	//if err != nil {
-	//	log.Println("Failed to upgrade connection:", err)
-	//	return
-	//}
-	//defer conn.Close()
+
+	conn, err := ps.wsServer.UpgradeConnection(w, r, nil)
+
+	if err != nil {
+		log.Println("Failed to upgrade connection:", err)
+		return
+	}
+	defer conn.Close()
+
 }
 
 func (ps *ProxyServer) checkOverdueToken() {
@@ -67,8 +79,8 @@ func (ps *ProxyServer) checkOverdueToken() {
 }
 
 func (ps *ProxyServer) Run() {
-
-	ps.wsServer = &network.WSServer{}
+	ps.registerHandlers()
+	ps.httpServer.Run()
 	ps.wsServer.Run()
 
 	ticker := time.NewTicker(time.Second * 5)
@@ -86,9 +98,11 @@ func (ps *ProxyServer) Run() {
 	sig := <-c
 	log.Println("Server closing down, signal", sig)
 
-	ps.close()
+	ps.Close()
 }
 
-func (ps *ProxyServer) close() {
+func (ps *ProxyServer) Close() {
+	ps.httpServer.Close()
+	ps.wsServer.Close()
 	log.Println("Server close")
 }

@@ -1,8 +1,9 @@
 package network
 
 import (
-	"github.com/gorilla/websocket"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 type WSConnSet map[*websocket.Conn]struct{}
