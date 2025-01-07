@@ -1,6 +1,7 @@
 package network
 
 import (
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 
@@ -8,15 +9,15 @@ import (
 )
 
 type HttpServer struct {
-	mux *http.ServeMux
+	router *mux.Router
 }
 
 func NewHttpServer() *HttpServer {
-	return &HttpServer{mux: http.NewServeMux()}
+	return &HttpServer{router: mux.NewRouter()}
 }
 
 func (hs *HttpServer) AddRoute(path string, handlerFunc http.HandlerFunc) {
-	hs.mux.HandleFunc(path, handlerFunc)
+	hs.router.HandleFunc(path, handlerFunc)
 }
 
 func (hs *HttpServer) Run() {

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"time"
 
 	"ZTWssProxy/internal/network"
@@ -38,7 +37,7 @@ func NewProxyServer() *ProxyServer {
 }
 
 func (ps *ProxyServer) registerHandlers() {
-	ps.httpServer.AddRoute("/token", ps.handleGameSrvToken)
+	ps.httpServer.AddRoute("/token/{tempID}", ps.handleGameSrvToken)
 	ps.wsServer.AddRoute("/ws/{zoneID}/{gatePort}/{token}", ps.handleClientConnect)
 }
 
@@ -48,6 +47,10 @@ func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request
 		log.Println("Invalid request method")
 		return
 	}
+
+	vars := mux.Vars(r)
+	tempID := vars["tempID"]
+	log.Println(tempID)
 
 	err := r.ParseForm()
 	if err != nil {
@@ -80,9 +83,6 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	defer conn.Close()
-
-	segments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	log.Println(segments)
 
 }
 

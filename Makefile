@@ -10,11 +10,12 @@ tidy:
 .PHONY: build
 build:
 	@$(GO) build run/main.go
-	@$(GO) build run/mock_client.go
+	@$(GO) build run/mock_client_connect.go
+	@$(GO) build run/mock_client_token.go
 
 .PHONY: client
 client:
-		@$(GO) build run/mock_client.go
+		@$(GO) build run/mock_client_connect.go
 
 .PHONY: clean
 clean:
