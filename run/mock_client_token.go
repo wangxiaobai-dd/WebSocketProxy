@@ -1,19 +1,32 @@
 package main
 
 import (
-	"ZTWssProxy/configs"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+
+	"ZTWssProxy/configs"
+	"ZTWssProxy/internal/proxyserver"
 )
 
 func main() {
+	t := proxyserver.Token{
+		LoginTempID: 12345,
+		AccID:       67890,
+		ZoneID:      1,
+		GateIp:      "127.0.0.1",
+		GatePort:    5240,
+	}
+
+	data, err := json.Marshal(t)
+	if err != nil {
+		log.Fatal("Error marshaling JSON:", err)
+	}
+
 	url := fmt.Sprintf("http://%s/token", configs.GameTokenAddr)
-	data := []byte(`{"key":"value"}`)
-
-	// 创建 HTTP 客户端
-
 	client := &http.Client{}
 
 	// 发送 POST 请求

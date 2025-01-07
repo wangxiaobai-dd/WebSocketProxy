@@ -13,16 +13,20 @@ import (
 )
 
 type WSServer struct {
-	router   *mux.Router
-	upgrader *websocket.Upgrader
+	router     *mux.Router
+	upgrader   *websocket.Upgrader
+	secureFlag bool
+	connMu     sync.Mutex
+	conns      WSConnSet
 }
 
-func NewWSServer() *WSServer {
+func NewWSServer(secureFlag bool) *WSServer {
 	return &WSServer{
 		router: mux.NewRouter(),
 		upgrader: &websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
+		secureFlag: secureFlag,
 	}
 }
 
@@ -35,12 +39,10 @@ func (ws *WSServer) UpgradeConnection(w http.ResponseWriter, r *http.Request, re
 	return conn, err
 }
 
-type WSHandler struct {
-	upgrader websocket.Upgrader
-	connMu   sync.Mutex
-	conns    WSConnSet
-	wg       sync.WaitGroup
-	wrapper  func(conn *WSConn) Wrapper
+func (ws *WSServer) AddConn(conn *WSConn) {
+	ws.connMu.Lock()
+	ws.conns[conn] = struct{}{}
+	ws.connMu.Unlock()
 }
 
 func (ws *WSServer) Run() {
@@ -54,14 +56,27 @@ func (ws *WSServer) Run() {
 	}
 
 	go func() {
-		if err := server.ListenAndServeTLS(configs.CertFile, configs.KeyFile); err != nil {
-			log.Fatal("WSS server failed to start:", err.Error())
+		if ws.secureFlag {
+			if err := server.ListenAndServeTLS(configs.CertFile, configs.KeyFile); err != nil {
+				log.Fatal("Websocket-secure server failed to start:", err.Error())
+			}
+		} else {
+			if err := server.ListenAndServe(); err != nil {
+				log.Fatal("Websocket server failed to start:", err.Error())
+			}
 		}
 	}()
 
-	log.Println("WSS server run")
+	log.Println("Websocket server run, secure:", ws.secureFlag)
 }
 
 func (ws *WSServer) Close() {
-	log.Println("WSS server close")
+	ws.connMu.Lock()
+	for conn := range ws.conns {
+		conn.Close()
+	}
+	ws.conns = nil
+	ws.connMu.Unlock()
+
+	log.Println("Websocket server close")
 }

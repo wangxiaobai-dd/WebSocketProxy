@@ -1,19 +1,18 @@
 package main
 
 import (
-	"ZTWssProxy/configs"
 	"crypto/tls"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"log"
+
+	"ZTWssProxy/configs"
+	"github.com/gorilla/websocket"
 )
 
 func main() {
-	url := fmt.Sprintf("wss://%s/ws/zone:69000/5240/1000", configs.ClientConnAddr)
-	//url := fmt.Sprintf("https://%s/ws/zone:69000/5240/1000", configs.ClientConnAddr)
+	url := fmt.Sprintf("wss://%s/connect/12345", configs.ClientConnAddr)
 
 	// 创建 HTTP 客户端
-
 	dialer := &websocket.Dialer{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -26,7 +25,7 @@ func main() {
 
 	// 如果需要发送数据，可以使用 conn.WriteMessage
 	message := []byte(`{"key":"value"}`)
-	err = conn.WriteMessage(websocket.TextMessage, message)
+	err = conn.WriteMessage(websocket.BinaryMessage, message)
 	if err != nil {
 		log.Printf("Failed to send WebSocket message: %v", err)
 		return

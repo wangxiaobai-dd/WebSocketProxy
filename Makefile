@@ -16,6 +16,7 @@ build:
 .PHONY: client
 client:
 		@$(GO) build run/mock_client_connect.go
+		@$(GO) build run/mock_client_token.go
 
 .PHONY: clean
 clean:

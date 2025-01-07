@@ -1,44 +1,41 @@
 package proxyserver
 
 import (
-	"github.com/gorilla/mux"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"ZTWssProxy/internal/network"
+	"ZTWssProxy/pkg/util"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
-
-type connWrapper struct {
-}
-
-func (p *connWrapper) Verify() {
-
-}
-
-func (p *connWrapper) Run() {
-
-}
 
 type ProxyServer struct {
 	tokenManager *TokenManager
 	wsServer     *network.WSServer
 	httpServer   *network.HttpServer
+
+	gateMu    sync.Mutex
+	gateConns network.WSConnSet
+	wg        sync.WaitGroup
 }
 
 func NewProxyServer() *ProxyServer {
 	return &ProxyServer{
 		tokenManager: &TokenManager{},
-		wsServer:     network.NewWSServer(),
+		wsServer:     network.NewWSServer(true),
 		httpServer:   network.NewHttpServer(),
 	}
 }
 
 func (ps *ProxyServer) registerHandlers() {
-	ps.httpServer.AddRoute("/token/{tempID}", ps.handleGameSrvToken)
-	ps.wsServer.AddRoute("/ws/{zoneID}/{gatePort}/{token}", ps.handleClientConnect)
+	ps.httpServer.AddRoute("/token", ps.handleGameSrvToken, "POST")
+	ps.wsServer.AddRoute("/connect/{loginTempID}", ps.handleClientConnect)
 }
 
 // 接收游戏服务器token
@@ -48,17 +45,17 @@ func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	vars := mux.Vars(r)
-	tempID := vars["tempID"]
-	log.Println(tempID)
-
-	err := r.ParseForm()
+	t, err := ps.tokenManager.createTokenWithRequest(r)
 	if err != nil {
-		log.Println("Error parsing form data", err)
+		log.Println(err)
 		return
 	}
 
-	t := ps.tokenManager.createTokenWithRequest(r)
+	if err = t.check(); err != nil {
+		log.Println(err)
+		return
+	}
+
 	if ps.tokenManager.contains(t) {
 		log.Println("Token already exists", t.info())
 		return
@@ -66,24 +63,51 @@ func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request
 	ps.tokenManager.add(t)
 }
 
-// url : https://website/zoneID/GatePort/token
+// url : https://website/token
 func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Request) {
-
 	vars := mux.Vars(r)
-	zoneID := vars["zoneID"]
-	gatePort := vars["gatePort"]
-	token := vars["token"]
+	loginTempID, err := util.StrToUint32(vars["loginTempID"])
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-	log.Println("Connecting to zone:", zoneID, "gate:", gatePort, "token:", token)
+	t, canLogin := ps.tokenManager.get(loginTempID)
+	if canLogin == false {
+		log.Println("Failed to find token:", loginTempID)
+		return
+	}
 
-	conn, err := ps.wsServer.UpgradeConnection(w, r, nil)
+	log.Println("Connecting to zone:", t.info())
 
+	clientConn, err := ps.wsServer.UpgradeConnection(w, r, nil)
 	if err != nil {
 		log.Println("Failed to upgrade connection:", err)
 		return
 	}
-	defer conn.Close()
 
+	ps.wg.Add(1)
+	defer ps.wg.Done()
+
+	gateAddr := fmt.Sprintf("%s:%d", t.GateIp, t.GatePort)
+	gateConn, _, err := websocket.DefaultDialer.Dial("ws://"+gateAddr, nil)
+	if err != nil {
+		log.Println("Failed to connect to GatewayServer:", err)
+		clientConn.Close()
+		return
+	}
+
+	conn1 := network.NewWSConn(clientConn)
+	ps.wsServer.AddConn(conn1)
+
+	conn2 := network.NewWSConn(gateConn)
+	ps.gateMu.Lock()
+	ps.gateConns[conn2] = struct{}{}
+	ps.gateMu.Unlock()
+
+	forwardWSMessage(conn1, conn2)
+
+	log.Println("Connected to gateServer, begin forward")
 }
 
 func (ps *ProxyServer) checkOverdueToken() {
@@ -116,5 +140,14 @@ func (ps *ProxyServer) Run() {
 func (ps *ProxyServer) Close() {
 	ps.httpServer.Close()
 	ps.wsServer.Close()
+
+	ps.gateMu.Lock()
+	for conn := range ps.gateConns {
+		conn.Close()
+	}
+	ps.gateConns = nil
+	ps.gateMu.Unlock()
+
+	ps.wg.Wait()
 	log.Println("Server close")
 }
