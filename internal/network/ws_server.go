@@ -13,6 +13,7 @@ import (
 )
 
 type WSServer struct {
+	addr       string
 	router     *mux.Router
 	upgrader   *websocket.Upgrader
 	secureFlag bool
@@ -20,8 +21,9 @@ type WSServer struct {
 	conns      WSConnSet
 }
 
-func NewWSServer(secureFlag bool) *WSServer {
+func NewWSServer(addr string, secureFlag bool) *WSServer {
 	return &WSServer{
+		addr:   addr,
 		router: mux.NewRouter(),
 		upgrader: &websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
@@ -30,33 +32,32 @@ func NewWSServer(secureFlag bool) *WSServer {
 	}
 }
 
-func (ws *WSServer) AddRoute(path string, handlerFunc http.HandlerFunc) {
-	ws.router.HandleFunc(path, handlerFunc)
+func (s *WSServer) AddRoute(path string, handlerFunc http.HandlerFunc) {
+	s.router.HandleFunc(path, handlerFunc)
 }
 
-func (ws *WSServer) UpgradeConnection(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (*websocket.Conn, error) {
-	conn, err := ws.upgrader.Upgrade(w, r, responseHeader)
+func (s *WSServer) UpgradeConnection(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (*websocket.Conn, error) {
+	conn, err := s.upgrader.Upgrade(w, r, responseHeader)
 	return conn, err
 }
 
-func (ws *WSServer) AddConn(conn *WSConn) {
-	ws.connMu.Lock()
-	ws.conns[conn] = struct{}{}
-	ws.connMu.Unlock()
+func (s *WSServer) AddConn(conn *WSConn) {
+	s.connMu.Lock()
+	s.conns[conn] = struct{}{}
+	s.connMu.Unlock()
 }
 
-func (ws *WSServer) Run() {
-
+func (s *WSServer) Run() {
 	server := &http.Server{
-		Addr:         configs.ClientConnAddr, // 监听的地址和端口
-		Handler:      ws.router,              // 设置请求处理器
-		ReadTimeout:  10 * time.Second,       // 设置读取超时
-		WriteTimeout: 10 * time.Second,       // 设置写入超时
-		IdleTimeout:  60 * time.Second,       // 设置空闲超时
+		Addr:         s.addr,           // 监听的地址和端口
+		Handler:      s.router,         // 设置请求处理器
+		ReadTimeout:  10 * time.Second, // 设置读取超时
+		WriteTimeout: 10 * time.Second, // 设置写入超时
+		IdleTimeout:  60 * time.Second, // 设置空闲超时
 	}
 
 	go func() {
-		if ws.secureFlag {
+		if s.secureFlag {
 			if err := server.ListenAndServeTLS(configs.CertFile, configs.KeyFile); err != nil {
 				log.Fatal("Websocket-secure server failed to start:", err.Error())
 			}
@@ -67,16 +68,16 @@ func (ws *WSServer) Run() {
 		}
 	}()
 
-	log.Println("Websocket server run, secure:", ws.secureFlag)
+	log.Println("Websocket server run, secure:", s.secureFlag)
 }
 
-func (ws *WSServer) Close() {
-	ws.connMu.Lock()
-	for conn := range ws.conns {
+func (s *WSServer) Close() {
+	s.connMu.Lock()
+	for conn := range s.conns {
 		conn.Close()
 	}
-	ws.conns = nil
-	ws.connMu.Unlock()
+	s.conns = nil
+	s.connMu.Unlock()
 
 	log.Println("Websocket server close")
 }

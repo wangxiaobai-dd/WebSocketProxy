@@ -14,11 +14,11 @@ import (
 
 func main() {
 	t := proxyserver.Token{
-		LoginTempID: 12345,
+		LoginTempID: configs.TestLoginTempID,
 		AccID:       67890,
 		ZoneID:      1,
 		GateIp:      "127.0.0.1",
-		GatePort:    5240,
+		GatePort:    configs.TestGatePort,
 	}
 
 	data, err := json.Marshal(t)

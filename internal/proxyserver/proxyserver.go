@@ -1,6 +1,7 @@
 package proxyserver
 
 import (
+	"ZTWssProxy/configs"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	"ZTWssProxy/internal/network"
 	"ZTWssProxy/pkg/util"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 )
 
 type ProxyServer struct {
@@ -28,7 +28,7 @@ type ProxyServer struct {
 func NewProxyServer() *ProxyServer {
 	return &ProxyServer{
 		tokenManager: &TokenManager{},
-		wsServer:     network.NewWSServer(true),
+		wsServer:     network.NewWSServer(configs.ClientConnAddr, true),
 		httpServer:   network.NewHttpServer(),
 	}
 }
@@ -89,23 +89,24 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 	ps.wg.Add(1)
 	defer ps.wg.Done()
 
-	gateAddr := fmt.Sprintf("%s:%d", t.GateIp, t.GatePort)
-	gateConn, _, err := websocket.DefaultDialer.Dial("ws://"+gateAddr, nil)
+	gateAddr := fmt.Sprintf("%s:%s", t.GateIp, t.GatePort)
+	wsClient := network.NewWSClient(gateAddr)
+	gateConn, err := wsClient.Connect()
 	if err != nil {
 		log.Println("Failed to connect to GatewayServer:", err)
 		clientConn.Close()
 		return
 	}
 
-	conn1 := network.NewWSConn(clientConn)
-	ps.wsServer.AddConn(conn1)
+	wsClientConn := network.NewWSConn(clientConn)
+	ps.wsServer.AddConn(wsClientConn)
 
-	conn2 := network.NewWSConn(gateConn)
+	wsGateConn := network.NewWSConn(gateConn)
 	ps.gateMu.Lock()
-	ps.gateConns[conn2] = struct{}{}
+	ps.gateConns[wsGateConn] = struct{}{}
 	ps.gateMu.Unlock()
 
-	forwardWSMessage(conn1, conn2)
+	forwardWSMessage(wsClientConn, wsGateConn)
 
 	log.Println("Connected to gateServer, begin forward")
 }

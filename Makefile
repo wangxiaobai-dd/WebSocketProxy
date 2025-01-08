@@ -12,6 +12,7 @@ build:
 	@$(GO) build run/main.go
 	@$(GO) build run/mock_client_connect.go
 	@$(GO) build run/mock_client_token.go
+	@$(GO) build run/mock_gateserver.go
 
 .PHONY: client
 client:

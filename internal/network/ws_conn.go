@@ -9,9 +9,8 @@ import (
 type WSConnSet map[*WSConn]struct{}
 
 type WSConn struct {
-	sync.Mutex
-	conn      *websocket.Conn
-	closeFlag bool
+	sync.Once
+	conn *websocket.Conn
 }
 
 func (conn *WSConn) Read(p []byte) (n int, err error) {
@@ -23,14 +22,9 @@ func (conn *WSConn) Write(p []byte) (n int, err error) {
 }
 
 func (conn *WSConn) Close() {
-	conn.Lock()
-	defer conn.Unlock()
-
-	if conn.closeFlag {
-		return
-	}
-	conn.closeFlag = true
-	conn.conn.Close()
+	conn.Do(func() {
+		conn.conn.Close()
+	})
 }
 
 func NewWSConn(conn *websocket.Conn) *WSConn {
