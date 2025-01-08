@@ -14,11 +14,21 @@ type WSConn struct {
 }
 
 func (conn *WSConn) Read(p []byte) (n int, err error) {
-	return conn.Read(p)
+	_, message, err := conn.conn.ReadMessage()
+	if err != nil {
+		return 0, err
+	}
+
+	n = copy(p, message)
+	return n, nil
 }
 
 func (conn *WSConn) Write(p []byte) (n int, err error) {
-	return conn.Write(p)
+	err = conn.conn.WriteMessage(websocket.TextMessage, p)
+	if err != nil {
+		return 0, err
+	}
+	return len(p), nil
 }
 
 func (conn *WSConn) Close() {

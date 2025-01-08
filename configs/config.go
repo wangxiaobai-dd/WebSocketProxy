@@ -5,6 +5,8 @@ const (
 	GameTokenAddr   = "localhost:8081" // 代理服务器接收游戏服务器发送的 token
 	CertFile        = "server_ssl.crt"
 	KeyFile         = "server_ssl.key"
+	TokenExpireTime = 1000
+
 	TestGateIp      = "localhost:"
 	TestGatePort    = 5240
 	TestLoginTempID = 12345

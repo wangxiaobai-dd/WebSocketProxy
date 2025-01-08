@@ -18,7 +18,7 @@ type WSServer struct {
 	upgrader   *websocket.Upgrader
 	secureFlag bool
 	connMu     sync.Mutex
-	conns      WSConnSet
+	conns      WSConnSet // 客户端连接
 }
 
 func NewWSServer(addr string, secureFlag bool) *WSServer {
@@ -29,6 +29,7 @@ func NewWSServer(addr string, secureFlag bool) *WSServer {
 			return true
 		}},
 		secureFlag: secureFlag,
+		conns:      make(WSConnSet),
 	}
 }
 
@@ -47,6 +48,13 @@ func (s *WSServer) AddConn(conn *WSConn) {
 	s.connMu.Unlock()
 }
 
+func (s *WSServer) RemoveConn(conn *WSConn) {
+	s.connMu.Lock()
+	delete(s.conns, conn)
+	s.connMu.Unlock()
+	log.Println("WSServer RemoveConn, conns len:", len(s.conns))
+}
+
 func (s *WSServer) Run() {
 	server := &http.Server{
 		Addr:         s.addr,           // 监听的地址和端口
@@ -59,16 +67,16 @@ func (s *WSServer) Run() {
 	go func() {
 		if s.secureFlag {
 			if err := server.ListenAndServeTLS(configs.CertFile, configs.KeyFile); err != nil {
-				log.Fatal("Websocket-secure server failed to start:", err.Error())
+				log.Fatal("WSSServer failed to start:", err.Error())
 			}
 		} else {
 			if err := server.ListenAndServe(); err != nil {
-				log.Fatal("Websocket server failed to start:", err.Error())
+				log.Fatal("WSServer failed to start:", err.Error())
 			}
 		}
 	}()
 
-	log.Println("Websocket server run, secure:", s.secureFlag)
+	log.Println("WSServer run, secure:", s.secureFlag)
 }
 
 func (s *WSServer) Close() {

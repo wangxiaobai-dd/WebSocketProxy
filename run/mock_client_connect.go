@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"fmt"
 	"log"
+	"os"
 
 	"ZTWssProxy/configs"
 	"github.com/gorilla/websocket"
@@ -21,23 +23,43 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to WebSocket server: %v", err)
 	}
-	defer conn.Close()
 
-	// 如果需要发送数据，可以使用 conn.WriteMessage
-	message := []byte(`{"key":"value"}`)
-	err = conn.WriteMessage(websocket.BinaryMessage, message)
-	if err != nil {
-		log.Printf("Failed to send WebSocket message: %v", err)
-		return
+	go func() {
+		defer conn.Close()
+		defer os.Exit(0)
+		for {
+			_, response, err := conn.ReadMessage()
+			if err != nil {
+				log.Printf("Failed to read WebSocket message: %v", err)
+				break
+			}
+			// 打印服务器返回的消息
+			fmt.Printf("Response from server: %s\n", string(response))
+		}
+		log.Println("Closing WebSocket connection")
+	}()
+
+	// 从控制台读取用户输入并发送
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		// 提示用户输入
+		fmt.Print("Enter message to send (or 'exit' to quit): ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			log.Printf("Error reading input: %v", err)
+			continue
+		}
+
+		input = input[:len(input)-1]
+		if input == "exit" {
+			fmt.Println("Exiting...")
+			break
+		}
+
+		// 发送消息到 WebSocket 服务器
+		err = conn.WriteMessage(websocket.TextMessage, []byte(input))
+		if err != nil {
+			log.Printf("Failed to send WebSocket message: %v", err)
+		}
 	}
-
-	// 接收服务器的响应
-	_, response, err := conn.ReadMessage()
-	if err != nil {
-		log.Printf("Failed to read WebSocket message: %v", err)
-		return
-	}
-
-	// 打印响应内容
-	fmt.Printf("Response from server: %s\n", string(response))
 }

@@ -4,9 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
-
 	"ZTWssProxy/configs"
+	"github.com/gorilla/mux"
 )
 
 type HttpServer struct {
@@ -22,7 +21,6 @@ func (hs *HttpServer) AddRoute(path string, handlerFunc http.HandlerFunc, method
 }
 
 func (hs *HttpServer) Run() {
-
 	httpServer := &http.Server{
 		Addr:    configs.GameTokenAddr,
 		Handler: hs.router,

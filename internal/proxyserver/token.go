@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"ZTWssProxy/configs"
 )
 
 type Token struct {
@@ -16,7 +18,7 @@ type Token struct {
 	ZoneID      uint32 `json:"zoneID"`
 	GateIp      string `json:"GateIp"`
 	GatePort    uint32 `json:"gatePort"`
-	overdueTime int64
+	expireTime  time.Time
 }
 
 func (t *Token) check() error {
@@ -30,6 +32,10 @@ func (t *Token) info() string {
 	return fmt.Sprintf("loginTempID:%d,accid:%d,zoneID:%d,gateIp:%s,gatePort:%d", t.LoginTempID, t.AccID, t.ZoneID, t.GateIp, t.GatePort)
 }
 
+func (t *Token) isExpired() bool {
+	return time.Now().After(t.expireTime)
+}
+
 type TokenManager struct {
 	tokens sync.Map
 }
@@ -40,13 +46,8 @@ func (tm *TokenManager) createTokenWithRequest(r *http.Request) (*Token, error) 
 		return nil, err
 	}
 	defer r.Body.Close()
-	t.overdueTime = time.Now().Unix() + 10
+	t.expireTime = time.Now().Add(configs.TokenExpireTime * time.Second)
 	return t, nil
-}
-
-func (tm *TokenManager) contains(t *Token) bool {
-	_, ok := tm.tokens.Load(t)
-	return ok
 }
 
 func (tm *TokenManager) add(t *Token) {
@@ -64,4 +65,15 @@ func (tm *TokenManager) get(loginTempID uint32) (*Token, bool) {
 
 func (tm *TokenManager) delete(loginTempID uint32) {
 	tm.tokens.Delete(loginTempID)
+}
+
+func (tm *TokenManager) cleanExpiredTokens() {
+	tm.tokens.Range(func(key, value interface{}) bool {
+		t, ok := value.(*Token)
+		if ok && t.isExpired() {
+			tm.tokens.Delete(key)
+			log.Println("Token expired", t.LoginTempID)
+		}
+		return true
+	})
 }
