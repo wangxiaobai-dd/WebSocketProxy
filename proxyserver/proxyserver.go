@@ -1,6 +1,8 @@
 package proxyserver
 
 import (
+	"ZTWssProxy/network"
+	"ZTWssProxy/util"
 	"fmt"
 	"io"
 	"log"
@@ -11,14 +13,11 @@ import (
 	"time"
 
 	"ZTWssProxy/configs"
-	"ZTWssProxy/internal/util"
-
-	"ZTWssProxy/internal/network"
 	"github.com/gorilla/mux"
 )
 
 type ProxyServer struct {
-	serverID     uint32
+	configs.ProxyConfig
 	tokenManager *TokenManager
 	wsServer     *network.WSServer
 	httpServer   *network.HttpServer
@@ -26,10 +25,11 @@ type ProxyServer struct {
 	gateManager  *network.WSClientManager
 }
 
-func NewProxyServer() *ProxyServer {
+func NewProxyServer(config configs.ProxyConfig) *ProxyServer {
 	return &ProxyServer{
+		ProxyConfig:  config,
 		tokenManager: &TokenManager{},
-		wsServer:     network.NewWSServer(configs.ClientConnAddr, true),
+		wsServer:     network.NewWSServer(configs.ClientConnAddr, true), //todo
 		httpServer:   network.NewHttpServer(),
 		gateManager:  network.NewWSClientManager(),
 	}
@@ -170,6 +170,6 @@ func (ps *ProxyServer) Close() {
 	log.Println("Server close")
 }
 
-func (ps *ProxyServer) StartService() {
+func (ps *ProxyServer) UpdateToEtcd() {
 
 }

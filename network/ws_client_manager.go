@@ -37,6 +37,14 @@ func (m *WSClientManager) RemoveByConn(conn *WSConn) {
 	log.Println("WSClientManager RemoveByConn, len:", len(m.clients))
 }
 
+func (m *WSClientManager) GetConnNum() int {
+	var num int
+	m.clientMu.Lock()
+	num = len(m.clients)
+	m.clientMu.Unlock()
+	return num
+}
+
 func (m *WSClientManager) Destroy() {
 	m.clientMu.Lock()
 	for _, client := range m.clients {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"ZTWssProxy/network"
+	"ZTWssProxy/util"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,8 +10,6 @@ import (
 	"os/signal"
 
 	"ZTWssProxy/configs"
-	"ZTWssProxy/internal/network"
-	"ZTWssProxy/internal/util"
 	"github.com/gorilla/websocket"
 )
 

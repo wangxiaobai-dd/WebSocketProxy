@@ -1,9 +1,9 @@
 package main
 
 import (
+	"ZTWssProxy/configs"
+	"ZTWssProxy/proxyserver"
 	"log"
-
-	"ZTWssProxy/internal/proxyserver"
 )
 
 func init() {
@@ -11,7 +11,7 @@ func init() {
 }
 
 func main() {
-
-	server := proxyserver.NewProxyServer()
+	config := configs.ProxyConfig{}
+	server := proxyserver.NewProxyServer(config)
 	server.Run()
 }

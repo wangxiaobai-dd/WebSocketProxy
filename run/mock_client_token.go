@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ZTWssProxy/proxyserver"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 	"net/http"
 
 	"ZTWssProxy/configs"
-	"ZTWssProxy/internal/proxyserver"
 )
 
 func main() {
