@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"ZTWssProxy/configs"
+	"ZTWssProxy/internal/util"
 
 	"ZTWssProxy/internal/network"
-	"ZTWssProxy/pkg/util"
 	"github.com/gorilla/mux"
 )
 
 type ProxyServer struct {
+	serverID     uint32
 	tokenManager *TokenManager
 	wsServer     *network.WSServer
 	httpServer   *network.HttpServer
@@ -41,11 +42,6 @@ func (ps *ProxyServer) registerHandlers() {
 
 // 接收游戏服务器token
 func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		log.Println("Invalid request method")
-		return
-	}
-
 	t, err := ps.tokenManager.createTokenWithRequest(r)
 	if err != nil {
 		log.Println(err)
@@ -106,7 +102,6 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 
 	log.Println("Connected to gateServer, begin forward:", t.info(), "remote:", conn.RemoteAddr())
 	ps.forwardWSMessage(clientConn, gateConn)
-
 }
 
 func (ps *ProxyServer) forwardWSMessage(clientConn, gateConn *network.WSConn) {
@@ -173,4 +168,8 @@ func (ps *ProxyServer) Close() {
 	ps.gateManager.Destroy()
 	ps.connWg.Wait()
 	log.Println("Server close")
+}
+
+func (ps *ProxyServer) StartService() {
+
 }

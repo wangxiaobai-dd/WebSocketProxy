@@ -9,12 +9,11 @@ import (
 
 	"ZTWssProxy/configs"
 	"ZTWssProxy/internal/network"
-	"ZTWssProxy/pkg/util"
+	"ZTWssProxy/internal/util"
 	"github.com/gorilla/websocket"
 )
 
 func main() {
-	// todo etcd or consul
 	gateServer := network.NewWSServer(configs.TestGateIp+util.Uint32ToStr(configs.TestGatePort), false)
 	gateServer.AddRoute("/", func(writer http.ResponseWriter, request *http.Request) {
 		conn, err := gateServer.UpgradeConnection(writer, request, nil)
