@@ -14,6 +14,6 @@ func NewEtcdOptions() *EtcdOptions {
 }
 
 func (opts *EtcdOptions) String() string {
-	return fmt.Sprintf("EtcdEndPoints:%s, EtcdKey:%s, EtcdLeaseTime:%d, UpdateEtcdDuration:%d",
+	return fmt.Sprintf("EtcdEndPoints:%s,EtcdKey:%s,EtcdLeaseTime:%d,UpdateEtcdDuration:%d",
 		opts.EtcdEndPoints, opts.EtcdKey, opts.EtcdLeaseTime, opts.UpdateEtcdDuration)
 }

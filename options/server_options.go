@@ -14,5 +14,5 @@ func NewServerOptions() *ServerOptions {
 }
 
 func (opts *ServerOptions) String() string {
-	return fmt.Sprintf("ServerID:%d, ServerIP:%s, TokenPort:%d, ClientPort:%d", opts.ServerID, opts.ServerIP, opts.TokenPort, opts.ClientPort)
+	return fmt.Sprintf("ServerID:%d,ServerIP:%s,TokenPort:%d,ClientPort:%d", opts.ServerID, opts.ServerIP, opts.TokenPort, opts.ClientPort)
 }

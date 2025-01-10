@@ -181,7 +181,7 @@ func (ps *ProxyServer) Run() {
 		}
 	}()
 
-	log.Printf("Server run success, %s|%s|%s|%s", ps.ServerOptions, ps.TokenOptions, ps.EtcdOptions, ps.SSLOptions)
+	log.Printf("Server run success, Server:%s,Token:%s,Etcd:%s,SSL:%s", ps.ServerOptions, ps.TokenOptions, ps.EtcdOptions, ps.SSLOptions)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)

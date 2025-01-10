@@ -13,5 +13,5 @@ func NewSSLOptions() *SSLOptions {
 }
 
 func (opts *SSLOptions) String() string {
-	return fmt.Sprintf("Secure:%v, CertFile:%s, KeyFile:%s", opts.Secure, opts.CertFile, opts.KeyFile)
+	return fmt.Sprintf("Secure:%v,CertFile:%s,KeyFile:%s", opts.Secure, opts.CertFile, opts.KeyFile)
 }

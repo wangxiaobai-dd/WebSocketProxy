@@ -12,5 +12,5 @@ func NewTokenOptions() *TokenOptions {
 }
 
 func (opts *TokenOptions) String() string {
-	return fmt.Sprintf("TokenValidTime:%d, CheckTokenDuration:%d", opts.TokenValidTime, opts.CheckTokenDuration)
+	return fmt.Sprintf("TokenValidTime:%d,CheckTokenDuration:%d", opts.TokenValidTime, opts.CheckTokenDuration)
 }

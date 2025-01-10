@@ -28,7 +28,7 @@ Etcd:
     - "127.0.0.1:2379"
   EtcdKey: "proxyserver"
   EtcdLeaseTime: 100
-  UpdateEtcdDuration: 5
+  UpdateEtcdDuration: 10
 
 SSL:
   Secure: true

@@ -33,6 +33,7 @@ func (etcd *EtcdClient) PutData(key string, value interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = etcd.Put(context.Background(), key, string(data))
 	if err != nil {
 		return err
@@ -54,7 +55,6 @@ func (etcd *EtcdClient) PutDataWithTTL(key string, value interface{}, ttl int) e
 	if err != nil {
 		return err
 	}
-	log.Println("Lease ", leaseResp.ID)
 	return nil
 }
 
@@ -63,7 +63,6 @@ func (etcd *EtcdClient) GetData(key string, result interface{}) error {
 	if err != nil {
 		return err
 	}
-
 	if len(resp.Kvs) == 0 {
 		return fmt.Errorf("failed to find key, %s", key)
 	}
