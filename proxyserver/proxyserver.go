@@ -2,6 +2,7 @@ package proxyserver
 
 import (
 	"ZTWssProxy/network"
+	"ZTWssProxy/registry"
 	"ZTWssProxy/util"
 	"fmt"
 	"io"
@@ -16,8 +17,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type ServerInfo struct {
+	ServerID   int    `json:"serverID"`
+	ServerIP   string `json:"serverIP"`
+	TokenPort  int    `json:"tokenPort"`
+	ClientPort int    `json:"clientPort"`
+	ConnNum    int    `json:"connNum"`
+}
+
 type ProxyServer struct {
 	configs.ProxyConfig
+	etcdClient *registry.EtcdClient
+
 	tokenManager *TokenManager
 	wsServer     *network.WSServer
 	httpServer   *network.HttpServer
@@ -28,6 +39,7 @@ type ProxyServer struct {
 func NewProxyServer(config configs.ProxyConfig) *ProxyServer {
 	return &ProxyServer{
 		ProxyConfig:  config,
+		etcdClient:   registry.NewEtcdClient(config.EtcdEndPoints),
 		tokenManager: &TokenManager{},
 		wsServer:     network.NewWSServer(configs.ClientConnAddr, true), //todo
 		httpServer:   network.NewHttpServer(),
@@ -171,5 +183,12 @@ func (ps *ProxyServer) Close() {
 }
 
 func (ps *ProxyServer) UpdateToEtcd() {
-
+	info := ServerInfo{
+		ServerID:   ps.ServerID,
+		ServerIP:   ps.ServerIP,
+		TokenPort:  ps.TokenPort,
+		ClientPort: ps.ClientPort,
+		ConnNum:    ps.gateManager.GetConnNum(),
+	}
+	ps.etcdClient.PutData("", info)
 }

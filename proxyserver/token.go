@@ -52,7 +52,7 @@ func (tm *TokenManager) createTokenWithRequest(r *http.Request) (*Token, error) 
 
 func (tm *TokenManager) add(t *Token) {
 	tm.tokens.Store(t.LoginTempID, t)
-	log.Println("Add token:", t.info())
+	log.Printf("Add token:%v", t.info())
 }
 
 func (tm *TokenManager) get(loginTempID uint32) (*Token, bool) {
@@ -72,7 +72,7 @@ func (tm *TokenManager) cleanExpiredTokens() {
 		t, ok := value.(*Token)
 		if ok && t.isExpired() {
 			tm.tokens.Delete(key)
-			log.Println("Token expired", t.LoginTempID)
+			log.Printf("Token expired:%v", t.LoginTempID)
 		}
 		return true
 	})

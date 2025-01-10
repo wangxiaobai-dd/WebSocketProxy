@@ -52,7 +52,7 @@ func (s *WSServer) RemoveConn(conn *WSConn) {
 	s.connMu.Lock()
 	delete(s.conns, conn)
 	s.connMu.Unlock()
-	log.Println("WSServer RemoveConn, conns len:", len(s.conns))
+	log.Printf("WSServer RemoveConn, conns len:%v", len(s.conns))
 }
 
 func (s *WSServer) Run() {
@@ -76,7 +76,7 @@ func (s *WSServer) Run() {
 		}
 	}()
 
-	log.Println("WSServer run, secure:", s.secureFlag)
+	log.Printf("WSServer run, secure:%v", s.secureFlag)
 }
 
 func (s *WSServer) Close() {
