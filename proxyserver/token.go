@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
-	"ZTWssProxy/configs"
 )
 
 type Token struct {
@@ -40,13 +38,13 @@ type TokenManager struct {
 	tokens sync.Map
 }
 
-func (tm *TokenManager) createTokenWithRequest(r *http.Request) (*Token, error) {
+func (tm *TokenManager) createTokenWithRequest(r *http.Request, tokenValidTime int) (*Token, error) {
 	t := &Token{}
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		return nil, err
 	}
 	defer r.Body.Close()
-	t.expireTime = time.Now().Add(configs.TokenExpireTime * time.Second)
+	t.expireTime = time.Now().Add(time.Duration(tokenValidTime) * time.Second)
 	return t, nil
 }
 

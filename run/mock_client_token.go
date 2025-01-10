@@ -1,7 +1,6 @@
 package main
 
 import (
-	"ZTWssProxy/proxyserver"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"net/http"
 
 	"ZTWssProxy/configs"
+	"ZTWssProxy/proxyserver"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 		log.Fatal("Error marshaling JSON:", err)
 	}
 
-	url := fmt.Sprintf("http://%s/token", configs.GameTokenAddr)
+	url := fmt.Sprintf("http://%s/token", configs.TestGameTokenAddr)
 	client := &http.Client{}
 
 	// 发送 POST 请求

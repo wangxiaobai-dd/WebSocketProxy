@@ -1,0 +1,37 @@
+
+# ServerID 服务器编号
+# ServerIP 服务器IP
+# TokenPort 接受游戏服务器token端口
+# ClientPort 接受客户端连接端口
+Servers:
+    - ServerID: 1
+      ServerIP: "127.0.0.1"
+      TokenPort: 8001
+      ClientPort: 9001
+
+    - ServerID: 2
+      ServerIP: "127.0.0.1"
+      TokenPort: 8002
+      ClientPort: 9002
+
+# TokenValidTime token有效时间
+# CheckTokenDuration 检查token间隔
+Token:
+  TokenValidTime: 30
+  CheckTokenDuration: 30
+
+# EtcdEndPoints etcd集群地址
+# EtcdLeaseTime key有效时间
+# UpdateEtcdDuration 更新proxy信息到etcd间隔
+Etcd:
+  EtcdEndPoints:
+    - "127.0.0.1:2379"
+  EtcdKey: "proxyserver"
+  EtcdLeaseTime: 100
+  UpdateEtcdDuration: 5
+
+SSL:
+  Secure: true
+  CertFile: "configs/server_ssl.crt"
+  KeyFile: "configs/server_ssl.key"
+

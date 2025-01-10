@@ -1,9 +1,6 @@
 package proxyserver
 
 import (
-	"ZTWssProxy/network"
-	"ZTWssProxy/registry"
-	"ZTWssProxy/util"
 	"fmt"
 	"io"
 	"log"
@@ -13,7 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"ZTWssProxy/configs"
+	"ZTWssProxy/network"
+	"ZTWssProxy/options"
+	"ZTWssProxy/registry"
+	"ZTWssProxy/util"
+
 	"github.com/gorilla/mux"
 )
 
@@ -26,7 +27,11 @@ type ServerInfo struct {
 }
 
 type ProxyServer struct {
-	configs.ProxyConfig
+	*options.ServerOptions
+	*options.TokenOptions
+	*options.EtcdOptions
+	*options.SSLOptions
+
 	etcdClient *registry.EtcdClient
 
 	tokenManager *TokenManager
@@ -36,14 +41,18 @@ type ProxyServer struct {
 	gateManager  *network.WSClientManager
 }
 
-func NewProxyServer(config configs.ProxyConfig) *ProxyServer {
+func NewProxyServer(serverID int, opts *options.Options) *ProxyServer {
+	serverOpts := opts.GetServerOptions(serverID)
 	return &ProxyServer{
-		ProxyConfig:  config,
-		etcdClient:   registry.NewEtcdClient(config.EtcdEndPoints),
-		tokenManager: &TokenManager{},
-		wsServer:     network.NewWSServer(configs.ClientConnAddr, true), //todo
-		httpServer:   network.NewHttpServer(),
-		gateManager:  network.NewWSClientManager(),
+		ServerOptions: serverOpts,
+		TokenOptions:  opts.Token,
+		EtcdOptions:   opts.Etcd,
+		SSLOptions:    opts.SSL,
+		etcdClient:    registry.NewEtcdClient(opts.Etcd),
+		tokenManager:  &TokenManager{},
+		wsServer:      network.NewWSServer(serverOpts, opts.SSL),
+		httpServer:    network.NewHttpServer(serverOpts),
+		gateManager:   network.NewWSClientManager(),
 	}
 }
 
@@ -54,7 +63,7 @@ func (ps *ProxyServer) registerHandlers() {
 
 // 接收游戏服务器token
 func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request) {
-	t, err := ps.tokenManager.createTokenWithRequest(r)
+	t, err := ps.tokenManager.createTokenWithRequest(r, ps.TokenValidTime)
 	if err != nil {
 		log.Println(err)
 		return
@@ -156,33 +165,44 @@ func (ps *ProxyServer) Run() {
 	ps.httpServer.Run()
 	ps.wsServer.Run()
 
-	ticker := time.NewTicker(time.Second * 5)
-	defer ticker.Stop()
+	tickerToken := time.NewTicker(time.Second * time.Duration(ps.CheckTokenDuration))
+	defer tickerToken.Stop()
 	go func() {
-		for range ticker.C {
+		for range tickerToken.C {
 			ps.tokenManager.cleanExpiredTokens()
 		}
 	}()
 
-	log.Println("Server run success")
+	tickerEtcd := time.NewTicker(time.Second * time.Duration(ps.UpdateEtcdDuration))
+	defer tickerEtcd.Stop()
+	go func() {
+		for range tickerEtcd.C {
+			ps.updateToEtcd()
+		}
+	}()
+
+	log.Printf("Server run success, %s|%s|%s|%s", ps.ServerOptions, ps.TokenOptions, ps.EtcdOptions, ps.SSLOptions)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)
 	sig := <-c
 	log.Println("Server closing down, signal", sig)
-
-	ps.Close()
 }
 
 func (ps *ProxyServer) Close() {
+	err := ps.etcdClient.DeleteData(ps.EtcdKey)
+	if err != nil {
+		log.Println("Server close", err)
+	}
+	ps.etcdClient.Close()
 	ps.httpServer.Close()
 	ps.wsServer.Close()
 	ps.gateManager.Destroy()
 	ps.connWg.Wait()
-	log.Println("Server close")
+	log.Println("Server close success")
 }
 
-func (ps *ProxyServer) UpdateToEtcd() {
+func (ps *ProxyServer) updateToEtcd() {
 	info := ServerInfo{
 		ServerID:   ps.ServerID,
 		ServerIP:   ps.ServerIP,
@@ -190,5 +210,11 @@ func (ps *ProxyServer) UpdateToEtcd() {
 		ClientPort: ps.ClientPort,
 		ConnNum:    ps.gateManager.GetConnNum(),
 	}
-	ps.etcdClient.PutData("", info)
+	key := fmt.Sprintf("%s/%d", ps.EtcdKey, ps.ServerID)
+	err := ps.etcdClient.PutDataWithTTL(key, info, ps.EtcdLeaseTime)
+	if err != nil {
+		log.Println("Failed to update proxy server info:", err)
+	} else {
+		log.Println("Update proxy server info")
+	}
 }

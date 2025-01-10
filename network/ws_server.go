@@ -1,13 +1,13 @@
 package network
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
-	"ZTWssProxy/configs"
-
+	"ZTWssProxy/options"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -16,20 +16,25 @@ type WSServer struct {
 	addr       string
 	router     *mux.Router
 	upgrader   *websocket.Upgrader
-	secureFlag bool
 	connMu     sync.Mutex
 	conns      WSConnSet // 客户端连接
+	secureFlag bool
+	certFile   string
+	keyFile    string
 }
 
-func NewWSServer(addr string, secureFlag bool) *WSServer {
+func NewWSServer(serverOpts *options.ServerOptions, sslOpts *options.SSLOptions) *WSServer {
+	addr := fmt.Sprintf("%s:%d", serverOpts.ServerIP, serverOpts.ClientPort)
 	return &WSServer{
 		addr:   addr,
 		router: mux.NewRouter(),
 		upgrader: &websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		secureFlag: secureFlag,
 		conns:      make(WSConnSet),
+		secureFlag: sslOpts.Secure,
+		certFile:   sslOpts.CertFile,
+		keyFile:    sslOpts.KeyFile,
 	}
 }
 
@@ -66,7 +71,7 @@ func (s *WSServer) Run() {
 
 	go func() {
 		if s.secureFlag {
-			if err := server.ListenAndServeTLS(configs.CertFile, configs.KeyFile); err != nil {
+			if err := server.ListenAndServeTLS(s.certFile, s.keyFile); err != nil {
 				log.Fatal("WSSServer failed to start:", err.Error())
 			}
 		} else {

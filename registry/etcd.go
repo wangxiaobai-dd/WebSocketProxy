@@ -4,18 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.etcd.io/etcd/client/v3"
 	"log"
 	"time"
+
+	"ZTWssProxy/options"
+	"go.etcd.io/etcd/client/v3"
 )
 
 type EtcdClient struct {
 	*clientv3.Client
 }
 
-func NewEtcdClient(endPoints []string) *EtcdClient {
+func NewEtcdClient(opts *options.EtcdOptions) *EtcdClient {
 	config := clientv3.Config{
-		Endpoints:   endPoints, // etcd 集群地址
+		Endpoints:   opts.EtcdEndPoints, // etcd 集群地址
 		DialTimeout: 5 * time.Second,
 	}
 	client, err := clientv3.New(config)
@@ -38,6 +40,24 @@ func (etcd *EtcdClient) PutData(key string, value interface{}) error {
 	return nil
 }
 
+func (etcd *EtcdClient) PutDataWithTTL(key string, value interface{}, ttl int) error {
+	leaseResp, err := etcd.Grant(context.Background(), int64(ttl))
+	if err != nil {
+		return fmt.Errorf("failed to create lease: %v", err)
+	}
+
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	_, err = etcd.Put(context.Background(), key, string(data), clientv3.WithLease(leaseResp.ID))
+	if err != nil {
+		return err
+	}
+	log.Println("Lease ", leaseResp.ID)
+	return nil
+}
+
 func (etcd *EtcdClient) GetData(key string, result interface{}) error {
 	resp, err := etcd.Get(context.Background(), key)
 	if err != nil {
@@ -55,7 +75,7 @@ func (etcd *EtcdClient) GetData(key string, result interface{}) error {
 	return nil
 }
 
-func (etcd *EtcdClient) GetAllDataWithPrefix(prefix string) (map[string]string, error) {
+func (etcd *EtcdClient) GetDataWithPrefix(prefix string) (map[string]string, error) {
 	resp, err := etcd.Get(context.Background(), prefix, clientv3.WithPrefix())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data from etcd with prefix %s: %v", prefix, err)
@@ -74,20 +94,6 @@ func (etcd *EtcdClient) DeleteData(key string) error {
 		return fmt.Errorf("failed to delete data from etcd: %v", err)
 	}
 	return nil
-}
-
-func (etcd *EtcdClient) Heartbeat(key string, value interface{}, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		err := etcd.PutData(key, value)
-		if err != nil {
-			log.Printf("Failed to send heartbeat for key %s: %v", key, err)
-		} else {
-			log.Printf("Heartbeat sent for key %s", key)
-		}
-	}
 }
 
 func (etcd *EtcdClient) Close() {

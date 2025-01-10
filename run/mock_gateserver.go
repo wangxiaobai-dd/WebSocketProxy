@@ -1,8 +1,6 @@
 package main
 
 import (
-	"ZTWssProxy/network"
-	"ZTWssProxy/util"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,11 +8,19 @@ import (
 	"os/signal"
 
 	"ZTWssProxy/configs"
+	"ZTWssProxy/network"
+	"ZTWssProxy/options"
 	"github.com/gorilla/websocket"
 )
 
 func main() {
-	gateServer := network.NewWSServer(configs.TestGateIp+util.Uint32ToStr(configs.TestGatePort), false)
+	serverOpts := &options.ServerOptions{
+		ServerIP:   configs.TestGateIp,
+		ClientPort: configs.TestGatePort,
+	}
+	sslOpts := &options.SSLOptions{}
+
+	gateServer := network.NewWSServer(serverOpts, sslOpts)
 	gateServer.AddRoute("/", func(writer http.ResponseWriter, request *http.Request) {
 		conn, err := gateServer.UpgradeConnection(writer, request, nil)
 		if err != nil {

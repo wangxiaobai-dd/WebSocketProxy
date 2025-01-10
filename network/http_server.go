@@ -1,19 +1,25 @@
 package network
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
-	"ZTWssProxy/configs"
+	"ZTWssProxy/options"
 	"github.com/gorilla/mux"
 )
 
 type HttpServer struct {
+	addr   string
 	router *mux.Router
 }
 
-func NewHttpServer() *HttpServer {
-	return &HttpServer{router: mux.NewRouter()}
+func NewHttpServer(opts *options.ServerOptions) *HttpServer {
+	addr := fmt.Sprintf("%s:%d", opts.ServerIP, opts.TokenPort)
+	return &HttpServer{
+		addr:   addr,
+		router: mux.NewRouter(),
+	}
 }
 
 func (hs *HttpServer) AddRoute(path string, handlerFunc http.HandlerFunc, method string) {
@@ -22,7 +28,7 @@ func (hs *HttpServer) AddRoute(path string, handlerFunc http.HandlerFunc, method
 
 func (hs *HttpServer) Run() {
 	httpServer := &http.Server{
-		Addr:    configs.GameTokenAddr,
+		Addr:    hs.addr,
 		Handler: hs.router,
 	}
 
