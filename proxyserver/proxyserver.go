@@ -95,7 +95,7 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 		log.Println("Failed to find token:", loginTempID)
 		return
 	}
-	//ps.tokenManager.delete(loginTempID)
+	ps.tokenManager.delete(loginTempID)
 
 	log.Println("Connecting to zone:", t.info())
 
@@ -214,7 +214,5 @@ func (ps *ProxyServer) updateToEtcd() {
 	err := ps.etcdClient.PutDataWithTTL(key, info, ps.EtcdLeaseTime)
 	if err != nil {
 		log.Println("Failed to update proxy server info:", err)
-	} else {
-		log.Println("Update proxy server info")
 	}
 }
