@@ -9,5 +9,5 @@ type SecureOptions struct {
 }
 
 func (opts SecureOptions) String() string {
-	return fmt.Sprintf("Secure:%v,CertFile:%s,KeyFile:%s", opts.Enabled, opts.CertFile, opts.KeyFile)
+	return fmt.Sprintf("Enabled:%v,CertFile:%s,KeyFile:%s", opts.Enabled, opts.CertFile, opts.KeyFile)
 }
