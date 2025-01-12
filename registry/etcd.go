@@ -15,7 +15,7 @@ type EtcdClient struct {
 	*clientv3.Client
 }
 
-func NewEtcdClient(opts *options.EtcdOptions) *EtcdClient {
+func NewEtcdClient(opts *options.EtcdOptions) IRegistry {
 	config := clientv3.Config{
 		Endpoints:   opts.EtcdEndPoints, // etcd 集群地址
 		DialTimeout: 5 * time.Second,
@@ -25,6 +25,22 @@ func NewEtcdClient(opts *options.EtcdOptions) *EtcdClient {
 		log.Fatal("Failed to create etcd client: ", err)
 		return nil
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err = client.Status(ctx, config.Endpoints[0])
+	if err != nil {
+		log.Fatal("Failed to connect to etcd: ", err)
+		return nil
+	}
+
+	_, err = client.Get(ctx, "health_check")
+	if err != nil {
+		log.Fatal("Failed to connect to etcd: ", err)
+		return nil
+	}
+
 	return &EtcdClient{Client: client}
 }
 

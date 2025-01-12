@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ZTWssProxy/registry"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,13 +15,25 @@ import (
 )
 
 func main() {
+	opts, err := options.Load("configs/options.yaml")
+	if err != nil {
+		log.Fatal("Load configuration failed: ", err)
+	}
+	redisClient := registry.NewRedisClient(opts.Redis)
+	data, _ := redisClient.GetDataWithPrefix(opts.Redis.GetKeyPrefix())
+	log.Println(data)
+
+	etcdClient := registry.NewEtcdClient(opts.Etcd)
+	data, _ = etcdClient.GetDataWithPrefix(opts.Etcd.GetKeyPrefix())
+	log.Println(data)
+
 	serverOpts := &options.ServerOptions{
 		ServerIP:   configs.TestGateIp,
 		ClientPort: configs.TestGatePort,
 	}
-	sslOpts := &options.SSLOptions{}
+	secureOpts := &options.SecureOptions{}
 
-	gateServer := network.NewWSServer(serverOpts, sslOpts)
+	gateServer := network.NewWSServer(serverOpts, secureOpts)
 	gateServer.AddRoute("/", func(writer http.ResponseWriter, request *http.Request) {
 		conn, err := gateServer.UpgradeConnection(writer, request, nil)
 		if err != nil {

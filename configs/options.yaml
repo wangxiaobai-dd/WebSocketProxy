@@ -1,8 +1,7 @@
-
-# ServerID 服务器编号
-# ServerIP 服务器IP
-# TokenPort 接受游戏服务器token端口
-# ClientPort 接受客户端连接端口
+# ServerID: 服务器编号
+# ServerIP: 服务器 IP
+# TokenPort: 接受游戏服务器 token 端口
+# ClientPort: 接受客户端连接端口
 Servers:
     - ServerID: 1
       ServerIP: "127.0.0.1"
@@ -14,24 +13,42 @@ Servers:
       TokenPort: 8002
       ClientPort: 9002
 
-# TokenValidTime token有效时间
-# CheckTokenDuration 检查token间隔
+# TokenValidTime: token 有效时间
+# CheckTokenDuration: 检查 token 间隔
 Token:
   TokenValidTime: 30
   CheckTokenDuration: 30
 
-# EtcdEndPoints etcd集群地址
-# EtcdLeaseTime key有效时间
-# UpdateEtcdDuration 更新proxy信息到etcd间隔
+# 代理服务器 SSL 配置
+Secure:
+  Enabled: true
+  CertFile: "configs/server_ssl.crt"
+  KeyFile: "configs/server_ssl.key"
+
+
+# 注册中心 ETCD or REDIS
+RegistrySelect: "ETCD"
+
+# EtcdEndPoints: etcd 集群地址
+# KeyExpireTime: key 有效时间
+# UpdateDuration: 更新 proxy 信息到 Etcd 间隔
 Etcd:
   EtcdEndPoints:
     - "127.0.0.1:2379"
-  EtcdKey: "proxyserver"
-  EtcdLeaseTime: 100
-  UpdateEtcdDuration: 10
+  Registry:
+    Key: "proxyserver/"
+    Password: ""
+    KeyExpireTime: 100
+    UpdateDuration: 10
 
-SSL:
-  Secure: true
-  CertFile: "configs/server_ssl.crt"
-  KeyFile: "configs/server_ssl.key"
+# Addr: Redis 地址
+# KeyExpireTime: key 有效时间
+# UpdateDuration: 更新 proxy 信息到 Redis 间隔
+Redis:
+  Addr: "127.0.0.1:6379"
+  Registry:
+    Key: "proxyserver/"
+    Password: ""
+    KeyExpireTime: 200
+    UpdateDuration: 20
 

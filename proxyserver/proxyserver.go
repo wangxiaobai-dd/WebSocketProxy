@@ -29,11 +29,9 @@ type ServerInfo struct {
 type ProxyServer struct {
 	*options.ServerOptions
 	*options.TokenOptions
-	*options.EtcdOptions
-	*options.SSLOptions
-
-	etcdClient *registry.EtcdClient
-
+	*options.SecureOptions
+	options.IRegistryOptions
+	registry     registry.IRegistry
 	tokenManager *TokenManager
 	wsServer     *network.WSServer
 	httpServer   *network.HttpServer
@@ -43,16 +41,17 @@ type ProxyServer struct {
 
 func NewProxyServer(serverID int, opts *options.Options) *ProxyServer {
 	serverOpts := opts.GetServerOptions(serverID)
+	registryOpts := opts.GetRegistryOptions()
 	return &ProxyServer{
-		ServerOptions: serverOpts,
-		TokenOptions:  opts.Token,
-		EtcdOptions:   opts.Etcd,
-		SSLOptions:    opts.SSL,
-		etcdClient:    registry.NewEtcdClient(opts.Etcd),
-		tokenManager:  &TokenManager{},
-		wsServer:      network.NewWSServer(serverOpts, opts.SSL),
-		httpServer:    network.NewHttpServer(serverOpts),
-		gateManager:   network.NewWSClientManager(),
+		ServerOptions:    serverOpts,
+		TokenOptions:     opts.Token,
+		IRegistryOptions: registryOpts,
+		SecureOptions:    opts.Secure,
+		registry:         registry.NewRegistry(registryOpts),
+		tokenManager:     &TokenManager{},
+		wsServer:         network.NewWSServer(serverOpts, opts.Secure),
+		httpServer:       network.NewHttpServer(serverOpts),
+		gateManager:      network.NewWSClientManager(),
 	}
 }
 
@@ -173,15 +172,15 @@ func (ps *ProxyServer) Run() {
 		}
 	}()
 
-	tickerEtcd := time.NewTicker(time.Second * time.Duration(ps.UpdateEtcdDuration))
-	defer tickerEtcd.Stop()
+	tickerReg := time.NewTicker(time.Second * time.Duration(ps.GetUpdateDuration()))
+	defer tickerReg.Stop()
 	go func() {
-		for range tickerEtcd.C {
-			ps.updateToEtcd()
+		for range tickerReg.C {
+			ps.updateToRegistry()
 		}
 	}()
 
-	log.Printf("Server run success, Server:%s,Token:%s,Etcd:%s,SSL:%s", ps.ServerOptions, ps.TokenOptions, ps.EtcdOptions, ps.SSLOptions)
+	log.Printf("Server run success, Server:%s,Token:%s,Registry:%s,Secure:%s", ps.ServerOptions, ps.TokenOptions, ps.IRegistryOptions, ps.SecureOptions)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)
@@ -190,11 +189,11 @@ func (ps *ProxyServer) Run() {
 }
 
 func (ps *ProxyServer) Close() {
-	err := ps.etcdClient.DeleteData(ps.EtcdKey)
+	err := ps.registry.DeleteData(ps.GetKey())
 	if err != nil {
 		log.Println("Server close", err)
 	}
-	ps.etcdClient.Close()
+	ps.registry.Close()
 	ps.httpServer.Close()
 	ps.wsServer.Close()
 	ps.gateManager.Destroy()
@@ -202,7 +201,7 @@ func (ps *ProxyServer) Close() {
 	log.Println("Server close success")
 }
 
-func (ps *ProxyServer) updateToEtcd() {
+func (ps *ProxyServer) updateToRegistry() {
 	info := ServerInfo{
 		ServerID:   ps.ServerID,
 		ServerIP:   ps.ServerIP,
@@ -210,9 +209,12 @@ func (ps *ProxyServer) updateToEtcd() {
 		ClientPort: ps.ClientPort,
 		ConnNum:    ps.gateManager.GetConnNum(),
 	}
-	key := fmt.Sprintf("%s/%d", ps.EtcdKey, ps.ServerID)
-	err := ps.etcdClient.PutDataWithTTL(key, info, ps.EtcdLeaseTime)
+	err := ps.registry.PutDataWithTTL(ps.GetKey(), info, ps.GetKeyExpireTime())
 	if err != nil {
 		log.Println("Failed to update proxy server info:", err)
 	}
+}
+
+func (ps *ProxyServer) GetKey() string {
+	return fmt.Sprintf("%s%d", ps.GetKeyPrefix(), ps.ServerID)
 }

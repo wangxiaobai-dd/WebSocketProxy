@@ -18,11 +18,11 @@ func main() {
 	optionFile := pflag.StringP("option", "o", "configs/options.yaml", "Path to the JSON configuration file")
 	pflag.Parse()
 
-	ops, err := options.Load(*optionFile)
+	opts, err := options.Load(*optionFile)
 	if err != nil {
 		log.Fatal("Load configuration failed: ", err)
 	}
-	server := proxyserver.NewProxyServer(*serverID, ops)
+	server := proxyserver.NewProxyServer(*serverID, opts)
 	server.Run()
 	server.Close()
 }
