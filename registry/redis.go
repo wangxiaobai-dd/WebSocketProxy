@@ -48,9 +48,14 @@ func (r *RedisClient) PutDataWithTTL(key string, value interface{}, ttl int) err
 		return fmt.Errorf("failed to marshal data: %v", err)
 	}
 
-	err = r.Set(context.Background(), key, data, time.Duration(ttl)*time.Second).Err()
+	err = r.Set(context.Background(), key, data, 0).Err()
 	if err != nil {
 		return fmt.Errorf("failed to set data to Redis with TTL: %v", err)
+	}
+
+	err = r.Expire(context.Background(), key, time.Duration(ttl)*time.Second).Err()
+	if err != nil {
+		log.Fatalf("could not set expiration: %v", err)
 	}
 	return nil
 }
