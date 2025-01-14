@@ -1,14 +1,15 @@
 package registry
 
 import (
-	"ZTWssProxy/options"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"time"
+
+	"github.com/redis/go-redis/v9"
+	"websocket_proxy/options"
 )
 
 type RedisClient struct {

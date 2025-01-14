@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 
-	"ZTWssProxy/options"
 	"github.com/spf13/pflag"
+	"websocket_proxy/options"
 
-	"ZTWssProxy/proxyserver"
+	"websocket_proxy/proxyserver"
 )
 
 func init() {

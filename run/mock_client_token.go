@@ -8,8 +8,8 @@ import (
 	"log"
 	"net/http"
 
-	"ZTWssProxy/configs"
-	"ZTWssProxy/proxyserver"
+	"websocket_proxy/configs"
+	"websocket_proxy/proxyserver"
 )
 
 func main() {

@@ -7,8 +7,8 @@ import (
 	"log"
 	"time"
 
-	"ZTWssProxy/options"
 	"go.etcd.io/etcd/client/v3"
+	"websocket_proxy/options"
 )
 
 type EtcdClient struct {

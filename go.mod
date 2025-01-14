@@ -1,4 +1,4 @@
-module ZTWssProxy
+module websocket_proxy
 
 go 1.22
 

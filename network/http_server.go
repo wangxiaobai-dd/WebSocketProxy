@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"ZTWssProxy/options"
 	"github.com/gorilla/mux"
+	"websocket_proxy/options"
 )
 
 type HttpServer struct {

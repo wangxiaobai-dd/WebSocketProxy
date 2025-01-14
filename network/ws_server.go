@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"ZTWssProxy/options"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"websocket_proxy/options"
 )
 
 type WSServer struct {

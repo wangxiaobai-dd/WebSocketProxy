@@ -1,17 +1,18 @@
 package main
 
 import (
-	"ZTWssProxy/registry"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 
-	"ZTWssProxy/configs"
-	"ZTWssProxy/network"
-	"ZTWssProxy/options"
+	"websocket_proxy/registry"
+
 	"github.com/gorilla/websocket"
+	"websocket_proxy/configs"
+	"websocket_proxy/network"
+	"websocket_proxy/options"
 )
 
 func main() {

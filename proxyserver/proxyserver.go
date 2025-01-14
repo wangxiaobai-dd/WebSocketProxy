@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"ZTWssProxy/network"
-	"ZTWssProxy/options"
-	"ZTWssProxy/registry"
-	"ZTWssProxy/util"
+	"websocket_proxy/network"
+	"websocket_proxy/options"
+	"websocket_proxy/registry"
+	"websocket_proxy/util"
 
 	"github.com/gorilla/mux"
 )

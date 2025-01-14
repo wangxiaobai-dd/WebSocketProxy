@@ -27,7 +27,7 @@ Secure:
 
 
 # 注册中心 ETCD or REDIS
-RegistrySelect: "ETCD"
+RegistrySelect: "REDIS"
 
 # EtcdEndPoints: etcd 集群地址
 # KeyExpireTime: key 有效时间
@@ -50,5 +50,5 @@ Redis:
     Key: "proxyserver/"
     Password: ""
     KeyExpireTime: 200
-    UpdateDuration: 20
+    UpdateDuration: 5
 

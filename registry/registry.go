@@ -1,8 +1,9 @@
 package registry
 
 import (
-	"ZTWssProxy/options"
 	"log"
+
+	"websocket_proxy/options"
 )
 
 type IRegistry interface {

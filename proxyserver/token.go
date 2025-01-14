@@ -14,7 +14,7 @@ type Token struct {
 	LoginTempID uint32 `json:"loginTempID"`
 	AccID       uint32 `json:"accid"`
 	ZoneID      uint32 `json:"zoneID"`
-	GateIp      string `json:"GateIp"`
+	GateIp      string `json:"gateIp"`
 	GatePort    uint32 `json:"gatePort"`
 	expireTime  time.Time
 }

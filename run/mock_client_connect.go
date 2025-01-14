@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"ZTWssProxy/configs"
 	"github.com/gorilla/websocket"
+	"websocket_proxy/configs"
 )
 
 func main() {
