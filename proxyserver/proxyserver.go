@@ -60,24 +60,32 @@ func (ps *ProxyServer) registerHandlers() {
 	ps.wsServer.AddRoute("/connect/{loginTempID}", ps.handleClientConnect)
 }
 
+func (ps *ProxyServer) respond(w http.ResponseWriter, message string, err error) {
+	fmt.Fprintf(w, message)
+	if err != nil {
+		log.Printf("Error: %v", err) // 打印详细的错误日志
+	}
+}
+
 // 接收游戏服务器token
 func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request) {
 	t, err := ps.tokenManager.createTokenWithRequest(r, ps.TokenValidTime)
 	if err != nil {
-		log.Println(err)
+		ps.respond(w, "TOKEN CREATE FAIL", err)
 		return
 	}
 
 	if err = t.check(); err != nil {
-		log.Println(err)
+		ps.respond(w, "TOKEN INVALID", err)
 		return
 	}
 
 	if _, exist := ps.tokenManager.get(t.LoginTempID); exist {
-		log.Println("Token already exists", t.info())
+		ps.respond(w, "TOKEN EXISTS", err)
 		return
 	}
 	ps.tokenManager.add(t)
+	ps.respond(w, "OK", nil)
 }
 
 // url : https://website/token

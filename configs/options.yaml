@@ -36,7 +36,7 @@ Etcd:
   EtcdEndPoints:
     - "127.0.0.1:2379"
   Registry:
-    Key: "proxyserver/"
+    Key: "proxyserver/2"
     Password: ""
     KeyExpireTime: 100
     UpdateDuration: 10
