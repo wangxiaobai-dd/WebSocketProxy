@@ -52,3 +52,7 @@ Redis:
     KeyExpireTime: 200
     UpdateDuration: 5
 
+Log:
+  Console: true
+  Path: "./"
+  LinkName: "proxyserver"

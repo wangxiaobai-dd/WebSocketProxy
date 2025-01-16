@@ -15,6 +15,7 @@ type Options struct {
 	Etcd           *EtcdOptions    `yaml:"Etcd"`
 	Redis          *RedisOptions   `yaml:"Redis"`
 	RegistrySelect string          `yaml:"RegistrySelect"`
+	Log            LogOptions      `yaml:"Log"`
 }
 
 func Load(filePath string) (*Options, error) {

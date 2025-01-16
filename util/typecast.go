@@ -7,6 +7,6 @@ func StrToUint32(s string) (uint32, error) {
 	return uint32(u64), err
 }
 
-func Uint32ToStr(u uint32) string {
+func IntToStr(u int) string {
 	return strconv.FormatInt(int64(u), 10)
 }
