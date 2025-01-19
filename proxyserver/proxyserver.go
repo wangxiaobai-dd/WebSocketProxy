@@ -129,7 +129,7 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 	ps.wsServer.AddConn(clientConn)
 
 	log.Println("Connected to gateServer, begin forward:", t.info(), "remote:", conn.RemoteAddr())
-	ps.forwardWSMessage(clientConn, gateConn)
+	go ps.forwardWSMessage(clientConn, gateConn)
 }
 
 func (ps *ProxyServer) forwardWSMessage(clientConn, gateConn *network.WSConn) {

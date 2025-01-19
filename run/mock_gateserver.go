@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/signal"
 
-	"websocket_proxy/registry"
-
 	"github.com/gorilla/websocket"
 	"websocket_proxy/configs"
 	"websocket_proxy/network"
@@ -16,17 +14,17 @@ import (
 )
 
 func main() {
-	opts, err := options.Load("configs/options.yaml")
-	if err != nil {
-		log.Fatal("Load configuration failed: ", err)
-	}
-	redisClient := registry.NewRedisClient(opts.Redis)
-	data, _ := redisClient.GetDataWithPrefix(opts.Redis.GetKeyPrefix())
-	log.Println(data)
-
-	etcdClient := registry.NewEtcdClient(opts.Etcd)
-	data, _ = etcdClient.GetDataWithPrefix(opts.Etcd.GetKeyPrefix())
-	log.Println(data)
+	//opts, err := options.Load("configs/options.yaml")
+	//if err != nil {
+	//	log.Fatal("Load configuration failed: ", err)
+	//}
+	//redisClient := registry.NewRedisClient(opts.Redis)
+	//data, _ := redisClient.GetDataWithPrefix(opts.Redis.GetKeyPrefix())
+	//log.Println(data)
+	//
+	//etcdClient := registry.NewEtcdClient(opts.Etcd)
+	//data, _ = etcdClient.GetDataWithPrefix(opts.Etcd.GetKeyPrefix())
+	//log.Println(data)
 
 	serverOpts := &options.ServerOptions{
 		ServerIP:   configs.TestGateIp,
