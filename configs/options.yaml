@@ -2,22 +2,30 @@
 # ServerIP: 服务器 IP
 # TokenPort: 接受游戏服务器 token 端口
 # ClientPort: 接受客户端连接端口
+# BufferSize: 双向转发缓冲区大小 单位KB
 Servers:
     - ServerID: 1
       ServerIP: "127.0.0.1"
       TokenPort: 8001
       ClientPort: 9001
+      BufferSize: 128
 
     - ServerID: 2
       ServerIP: "127.0.0.1"
       TokenPort: 8002
       ClientPort: 9002
+      BufferSize: 128
 
 # TokenValidTime: token 有效时间
 # CheckTokenDuration: 检查 token 间隔
 Token:
   TokenValidTime: 30
   CheckTokenDuration: 30
+
+# Websocket Client
+# MsgType 连接消息类型 1:TEXT 2:BINARY
+WSClient:
+  MsgType: 2
 
 # 代理服务器 SSL 配置
 Secure:
@@ -29,6 +37,7 @@ Secure:
 # 注册中心 ETCD or REDIS
 RegistrySelect: "REDIS"
 
+
 # EtcdEndPoints: etcd 集群地址
 # KeyExpireTime: key 有效时间
 # UpdateDuration: 更新 proxy 信息到 Etcd 间隔
@@ -36,7 +45,7 @@ Etcd:
   EtcdEndPoints:
     - "127.0.0.1:2379"
   Registry:
-    Key: "proxyserver/2"
+    Key: "proxyserver:"
     Password: ""
     KeyExpireTime: 100
     UpdateDuration: 10
@@ -47,11 +56,15 @@ Etcd:
 Redis:
   Addr: "127.0.0.1:6379"
   Registry:
-    Key: "proxyserver/"
+    Key: "proxyserver:"
     Password: ""
     KeyExpireTime: 200
     UpdateDuration: 5
 
+# Log
+# Console: true 命令行输出
+# Path: 日志文件路径
+# LinkName: 日志文件名前缀
 Log:
   Console: true
   Path: "./"

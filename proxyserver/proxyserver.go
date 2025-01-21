@@ -30,6 +30,7 @@ type ProxyServer struct {
 	*options.ServerOptions
 	*options.TokenOptions
 	*options.SecureOptions
+	*options.WSClientOptions
 	options.IRegistryOptions
 	registry     registry.IRegistry
 	tokenManager *TokenManager
@@ -47,6 +48,7 @@ func NewProxyServer(serverID int, opts *options.Options) *ProxyServer {
 		TokenOptions:     opts.Token,
 		IRegistryOptions: registryOpts,
 		SecureOptions:    opts.Secure,
+		WSClientOptions:  opts.WSClient,
 		registry:         registry.NewRegistry(registryOpts),
 		tokenManager:     &TokenManager{},
 		wsServer:         network.NewWSServer(serverOpts, opts.Secure),
@@ -116,7 +118,7 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 	defer ps.connWg.Done()
 
 	gateAddr := fmt.Sprintf("ws://%s:%d", t.GateIp, t.GatePort)
-	wsClient := network.NewWSClient(gateAddr)
+	wsClient := network.NewWSClient(ps.WSClientOptions, gateAddr)
 	gateConn, err := wsClient.Connect()
 	if err != nil {
 		log.Println("Failed to connect to GatewayServer:", err, t.info())
@@ -125,7 +127,7 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 	}
 	ps.gateManager.Add(wsClient)
 
-	clientConn := network.NewWSConn(conn)
+	clientConn := network.NewWSConn(conn, ps.WSClientOptions.MsgType)
 	ps.wsServer.AddConn(clientConn)
 
 	log.Println("Connected to gateServer, begin forward:", t.info(), "remote:", conn.RemoteAddr())
@@ -133,12 +135,18 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 }
 
 func (ps *ProxyServer) forwardWSMessage(clientConn, gateConn *network.WSConn) {
-	buf := make([]byte, 128*1024)
+	var size int
+	if ps.BufferSize == 0 {
+		size = 128
+	} else {
+		size = ps.BufferSize
+	}
+	buf := make([]byte, size*1024)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// 客户端 -> 网关
+	// Client -> Gate
 	go func() {
 		defer gateConn.Close()
 		defer wg.Done()
@@ -150,7 +158,7 @@ func (ps *ProxyServer) forwardWSMessage(clientConn, gateConn *network.WSConn) {
 		}
 	}()
 
-	// 网关 -> 客户端
+	// Gate -> Client
 	go func() {
 		defer clientConn.Close()
 		defer wg.Done()

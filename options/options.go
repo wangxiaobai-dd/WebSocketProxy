@@ -9,13 +9,14 @@ import (
 )
 
 type Options struct {
-	Servers        []ServerOptions `yaml:"Servers"`
-	Token          *TokenOptions   `yaml:"Token"`
-	Secure         *SecureOptions  `yaml:"Secure"`
-	Etcd           *EtcdOptions    `yaml:"Etcd"`
-	Redis          *RedisOptions   `yaml:"Redis"`
-	RegistrySelect string          `yaml:"RegistrySelect"`
-	Log            LogOptions      `yaml:"Log"`
+	Servers        []ServerOptions  `yaml:"Servers"`
+	Token          *TokenOptions    `yaml:"Token"`
+	Secure         *SecureOptions   `yaml:"Secure"`
+	Etcd           *EtcdOptions     `yaml:"Etcd"`
+	Redis          *RedisOptions    `yaml:"Redis"`
+	RegistrySelect string           `yaml:"RegistrySelect"`
+	Log            LogOptions       `yaml:"Log"`
+	WSClient       *WSClientOptions `yaml:"WSClient"`
 }
 
 func Load(filePath string) (*Options, error) {

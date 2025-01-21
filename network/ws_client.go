@@ -2,16 +2,18 @@ package network
 
 import (
 	"github.com/gorilla/websocket"
+	"websocket_proxy/options"
 )
 
 type WSClient struct {
-	addr   string
-	dialer *websocket.Dialer
-	conn   *WSConn // 与服务器连接
+	addr    string
+	dialer  *websocket.Dialer
+	conn    *WSConn // 与服务器连接
+	msgType int
 }
 
-func NewWSClient(addr string) *WSClient {
-	return &WSClient{addr: addr, dialer: &websocket.Dialer{}}
+func NewWSClient(opts *options.WSClientOptions, addr string) *WSClient {
+	return &WSClient{msgType: opts.MsgType, addr: addr, dialer: &websocket.Dialer{}}
 }
 
 func (c *WSClient) Connect() (*WSConn, error) {
@@ -19,7 +21,7 @@ func (c *WSClient) Connect() (*WSConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.conn = NewWSConn(conn)
+	c.conn = NewWSConn(conn, c.msgType)
 	return c.conn, nil
 }
 
