@@ -24,6 +24,7 @@ type ServerInfo struct {
 	TokenPort  int    `json:"tokenPort"`
 	ClientPort int    `json:"clientPort"`
 	ConnNum    int    `json:"connNum"`
+	SecureFlag bool   `json:"secureFlag"`
 }
 
 type ProxyServer struct {
@@ -224,6 +225,7 @@ func (ps *ProxyServer) updateToRegistry() {
 		TokenPort:  ps.TokenPort,
 		ClientPort: ps.ClientPort,
 		ConnNum:    ps.gateManager.GetConnNum(),
+		SecureFlag: ps.SecureFlag,
 	}
 	err := ps.registry.PutDataWithTTL(ps.GetKey(), info, ps.GetKeyExpireTime())
 	if err != nil {

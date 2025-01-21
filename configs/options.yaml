@@ -3,18 +3,21 @@
 # TokenPort: 接受游戏服务器 token 端口
 # ClientPort: 接受客户端连接端口
 # BufferSize: 双向转发缓冲区大小 单位KB
+# SecureFlag: true wss, false ws
 Servers:
     - ServerID: 1
       ServerIP: "127.0.0.1"
       TokenPort: 8001
       ClientPort: 9001
       BufferSize: 128
+      SecureFlag: true
 
     - ServerID: 2
       ServerIP: "127.0.0.1"
       TokenPort: 8002
       ClientPort: 9002
       BufferSize: 128
+      SecureFlag: false
 
 # TokenValidTime: token 有效时间
 # CheckTokenDuration: 检查 token 间隔
@@ -29,7 +32,6 @@ WSClient:
 
 # 代理服务器 SSL 配置
 Secure:
-  Enabled: true
   CertFile: "configs/server_ssl.crt"
   KeyFile: "configs/server_ssl.key"
 

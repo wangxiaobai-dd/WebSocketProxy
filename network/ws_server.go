@@ -32,7 +32,7 @@ func NewWSServer(serverOpts *options.ServerOptions, secureOpts *options.SecureOp
 			return true
 		}},
 		conns:      make(WSConnSet),
-		secureFlag: secureOpts.Enabled,
+		secureFlag: serverOpts.SecureFlag,
 		certFile:   secureOpts.CertFile,
 		keyFile:    secureOpts.KeyFile,
 	}

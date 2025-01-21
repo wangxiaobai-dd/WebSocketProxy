@@ -11,24 +11,24 @@ import (
 	"websocket_proxy/util"
 )
 
-var serverID int
+var serverID *int
 var opts *options.Options
 
 func init() {
-	serverID = *pflag.IntP("serverID", "i", 1, "Server ID to select configuration")
-	optionFile := *pflag.StringP("option", "o", "configs/options.yaml", "Path to the JSON configuration file")
+	serverID = pflag.IntP("serverID", "i", 1, "Server ID to select configuration")
+	optionFile := pflag.StringP("option", "o", "configs/options.yaml", "Path to the JSON configuration file")
 	pflag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	var err error
-	opts, err = options.Load(optionFile)
+	opts, err = options.Load(*optionFile)
 	if err != nil {
 		log.Fatal("Load configuration failed: ", err)
 	}
 
 	if opts.Log.Console == false {
-		prefix := opts.Log.Path + opts.Log.LinkName + util.IntToStr(serverID)
+		prefix := opts.Log.Path + opts.Log.LinkName + util.IntToStr(*serverID)
 		writer, _ := rotatelogs.New(
 			prefix+".log.%Y%m%d-%H",
 			rotatelogs.WithLinkName(prefix+".log"),
@@ -39,7 +39,7 @@ func init() {
 }
 
 func main() {
-	server := proxyserver.NewProxyServer(serverID, opts)
+	server := proxyserver.NewProxyServer(*serverID, opts)
 	server.Run()
 	server.Close()
 }
