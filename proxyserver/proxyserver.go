@@ -19,18 +19,18 @@ import (
 )
 
 type ServerInfo struct {
-	ServerID   int    `json:"serverID"`
-	ServerIP   string `json:"serverIP"`
-	TokenPort  int    `json:"tokenPort"`
-	ClientPort int    `json:"clientPort"`
-	ConnNum    int    `json:"connNum"`
-	SecureFlag bool   `json:"secureFlag"`
+	ServerID     int    `json:"serverID"`
+	ServerIP     string `json:"serverIP"`
+	ServerDomain string `json:"serverDomain"`
+	TokenPort    int    `json:"tokenPort"`
+	ClientPort   int    `json:"clientPort"`
+	ConnNum      int    `json:"connNum"`
+	SecureFlag   bool   `json:"secureFlag"`
 }
 
 type ProxyServer struct {
 	*options.ServerOptions
 	*options.TokenOptions
-	*options.SecureOptions
 	*options.WSClientOptions
 	options.IRegistryOptions
 	registry     registry.IRegistry
@@ -48,11 +48,10 @@ func NewProxyServer(serverID int, opts *options.Options) *ProxyServer {
 		ServerOptions:    serverOpts,
 		TokenOptions:     opts.Token,
 		IRegistryOptions: registryOpts,
-		SecureOptions:    opts.Secure,
 		WSClientOptions:  opts.WSClient,
 		registry:         registry.NewRegistry(registryOpts),
 		tokenManager:     &TokenManager{},
-		wsServer:         network.NewWSServer(serverOpts, opts.Secure),
+		wsServer:         network.NewWSServer(serverOpts),
 		httpServer:       network.NewHttpServer(serverOpts),
 		gateManager:      network.NewWSClientManager(),
 	}
@@ -197,7 +196,7 @@ func (ps *ProxyServer) Run() {
 		}
 	}()
 
-	log.Printf("Server run success, Server:%s,Token:%s,Registry:%s,Secure:%s", ps.ServerOptions, ps.TokenOptions, ps.IRegistryOptions, ps.SecureOptions)
+	log.Printf("Server run success, Server:%s,Token:%s,Registry:%s", ps.ServerOptions, ps.TokenOptions, ps.IRegistryOptions)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)

@@ -7,17 +7,23 @@
 Servers:
     - ServerID: 1
       ServerIP: "127.0.0.1"
+      ServerDomain: "test"
       TokenPort: 8001
       ClientPort: 9001
       BufferSize: 128
       SecureFlag: true
+      CertFile: "configs/server_ssl.crt"
+      KeyFile: "configs/server_ssl.key"
 
     - ServerID: 2
       ServerIP: "127.0.0.1"
+      ServerDomain: "test"
       TokenPort: 8002
       ClientPort: 9002
       BufferSize: 128
       SecureFlag: false
+      CertFile: "configs/server_ssl.crt"
+      KeyFile: "configs/server_ssl.key"
 
 # TokenValidTime: token 有效时间
 # CheckTokenDuration: 检查 token 间隔
@@ -29,12 +35,6 @@ Token:
 # MsgType 连接消息类型 1:TEXT 2:BINARY
 WSClient:
   MsgType: 2
-
-# 代理服务器 SSL 配置
-Secure:
-  CertFile: "configs/server_ssl.crt"
-  KeyFile: "configs/server_ssl.key"
-
 
 # 注册中心 ETCD or REDIS
 RegistrySelect: "REDIS"

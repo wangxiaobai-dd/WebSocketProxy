@@ -30,9 +30,8 @@ func main() {
 		ServerIP:   configs.TestGateIp,
 		ClientPort: configs.TestGatePort,
 	}
-	secureOpts := &options.SecureOptions{}
 
-	gateServer := network.NewWSServer(serverOpts, secureOpts)
+	gateServer := network.NewWSServer(serverOpts)
 	gateServer.AddRoute("/", func(writer http.ResponseWriter, request *http.Request) {
 		conn, err := gateServer.UpgradeConnection(writer, request, nil)
 		if err != nil {

@@ -23,7 +23,7 @@ type WSServer struct {
 	keyFile    string
 }
 
-func NewWSServer(serverOpts *options.ServerOptions, secureOpts *options.SecureOptions) *WSServer {
+func NewWSServer(serverOpts *options.ServerOptions) *WSServer {
 	addr := fmt.Sprintf("%s:%d", serverOpts.ServerIP, serverOpts.ClientPort)
 	return &WSServer{
 		addr:   addr,
@@ -33,8 +33,8 @@ func NewWSServer(serverOpts *options.ServerOptions, secureOpts *options.SecureOp
 		}},
 		conns:      make(WSConnSet),
 		secureFlag: serverOpts.SecureFlag,
-		certFile:   secureOpts.CertFile,
-		keyFile:    secureOpts.KeyFile,
+		certFile:   serverOpts.CertFile,
+		keyFile:    serverOpts.KeyFile,
 	}
 }
 
