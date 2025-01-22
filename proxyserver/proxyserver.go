@@ -219,12 +219,13 @@ func (ps *ProxyServer) Close() {
 
 func (ps *ProxyServer) updateToRegistry() {
 	info := ServerInfo{
-		ServerID:   ps.ServerID,
-		ServerIP:   ps.ServerIP,
-		TokenPort:  ps.TokenPort,
-		ClientPort: ps.ClientPort,
-		ConnNum:    ps.gateManager.GetConnNum(),
-		SecureFlag: ps.SecureFlag,
+		ServerID:     ps.ServerID,
+		ServerIP:     ps.ServerIP,
+		ServerDomain: ps.ServerDomain,
+		TokenPort:    ps.TokenPort,
+		ClientPort:   ps.ClientPort,
+		ConnNum:      ps.gateManager.GetConnNum(),
+		SecureFlag:   ps.SecureFlag,
 	}
 	err := ps.registry.PutDataWithTTL(ps.GetKey(), info, ps.GetKeyExpireTime())
 	if err != nil {
