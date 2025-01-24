@@ -42,11 +42,16 @@ func (opts *Options) GetServerOptions(serverID int) *ServerOptions {
 	return nil
 }
 
+const (
+	ETCD  = "ETCD"
+	REDIS = "REDIS"
+)
+
 func (opts *Options) GetRegistryOptions() IRegistryOptions {
 	switch opts.RegistrySelect {
-	case "ETCD":
+	case ETCD:
 		return opts.Etcd
-	case "REDIS":
+	case REDIS:
 		return opts.Redis
 	default:
 		log.Fatalln("No Registry options selected")

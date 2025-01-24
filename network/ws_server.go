@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"websocket_proxy/options"
+	"websocket_proxy/util"
 )
 
 type WSServer struct {
@@ -21,6 +23,7 @@ type WSServer struct {
 	secureFlag bool
 	certFile   string
 	keyFile    string
+	server     *http.Server
 }
 
 func NewWSServer(serverOpts *options.ServerOptions) *WSServer {
@@ -57,11 +60,11 @@ func (s *WSServer) RemoveConn(conn *WSConn) {
 	s.connMu.Lock()
 	delete(s.conns, conn)
 	s.connMu.Unlock()
-	log.Printf("WSServer RemoveConn, conns len:%v", len(s.conns))
+	log.Printf("WSServer RemoveConn, conns len: %d", len(s.conns))
 }
 
 func (s *WSServer) Run() {
-	server := &http.Server{
+	s.server = &http.Server{
 		Addr:         s.addr,           // 监听的地址和端口
 		Handler:      s.router,         // 设置请求处理器
 		ReadTimeout:  10 * time.Second, // 设置读取超时
@@ -71,17 +74,17 @@ func (s *WSServer) Run() {
 
 	go func() {
 		if s.secureFlag {
-			if err := server.ListenAndServeTLS(s.certFile, s.keyFile); err != nil {
+			if err := s.server.ListenAndServeTLS(s.certFile, s.keyFile); !util.IsClosedServerError(err) {
 				log.Fatal("WSSServer failed to start:", err.Error())
 			}
 		} else {
-			if err := server.ListenAndServe(); err != nil {
+			if err := s.server.ListenAndServe(); !util.IsClosedServerError(err) {
 				log.Fatal("WSServer failed to start:", err.Error())
 			}
 		}
 	}()
 
-	log.Printf("WSServer run, secure:%v", s.secureFlag)
+	log.Printf("WSServer run, secure: %v", s.secureFlag)
 }
 
 func (s *WSServer) Close() {
@@ -91,6 +94,14 @@ func (s *WSServer) Close() {
 	}
 	s.conns = nil
 	s.connMu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := s.server.Shutdown(ctx)
+	if err != nil {
+		log.Printf("Websocket server failed to shutdown: %s", err)
+	}
 
 	log.Println("Websocket server close")
 }

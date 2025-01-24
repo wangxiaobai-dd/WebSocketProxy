@@ -15,7 +15,7 @@ type ServerOptions struct {
 }
 
 func (opts ServerOptions) String() string {
-	return fmt.Sprintf("ServerID:%d,ServerIP:%s,ServerDomain:%s,TokenPort:%d,ClientPort:%d,"+
+	return fmt.Sprintf("ServerID:%d,ServerIP:%s,ServerDomain:%s,TokenPort:%d,ClientPort:%d"+
 		"BufferSize:%dKB,SecureFlag:%v", opts.ServerID, opts.ServerIP, opts.ServerDomain, opts.TokenPort,
 		opts.ClientPort, opts.BufferSize, opts.SecureFlag)
 }

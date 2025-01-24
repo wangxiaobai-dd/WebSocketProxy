@@ -44,6 +44,10 @@ func NewEtcdClient(opts *options.EtcdOptions) IRegistry {
 	return &EtcdClient{Client: client}
 }
 
+func (etcd *EtcdClient) GetType() string {
+	return options.ETCD
+}
+
 func (etcd *EtcdClient) PutData(key string, value interface{}) error {
 	data, err := json.Marshal(value)
 	if err != nil {

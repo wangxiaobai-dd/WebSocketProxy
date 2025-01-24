@@ -1,17 +1,21 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"websocket_proxy/options"
+	"websocket_proxy/util"
 )
 
 type HttpServer struct {
 	addr   string
 	router *mux.Router
+	server *http.Server
 }
 
 func NewHttpServer(opts *options.ServerOptions) *HttpServer {
@@ -27,14 +31,14 @@ func (hs *HttpServer) AddRoute(path string, handlerFunc http.HandlerFunc, method
 }
 
 func (hs *HttpServer) Run() {
-	httpServer := &http.Server{
+	hs.server = &http.Server{
 		Addr:    hs.addr,
 		Handler: hs.router,
 	}
 
 	go func() {
-		if err := httpServer.ListenAndServe(); err != nil {
-			log.Fatal("HTTP server failed to start:", err.Error())
+		if err := hs.server.ListenAndServe(); !util.IsClosedServerError(err) {
+			log.Fatalf("HTTP server failed to start, %s", err)
 		}
 	}()
 
@@ -42,5 +46,13 @@ func (hs *HttpServer) Run() {
 }
 
 func (hs *HttpServer) Close() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := hs.server.Shutdown(ctx)
+	if err != nil {
+		log.Printf("HTTP server failed to shutdown: %s", err)
+	}
+
 	log.Println("HTTP server close")
 }

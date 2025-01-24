@@ -7,9 +7,8 @@ import (
 
 type WSClient struct {
 	addr    string
-	dialer  *websocket.Dialer
-	conn    *WSConn // 与服务器连接
 	msgType int
+	dialer  *websocket.Dialer
 }
 
 func NewWSClient(opts *options.WSClientOptions, addr string) *WSClient {
@@ -21,10 +20,5 @@ func (c *WSClient) Connect() (*WSConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.conn = NewWSConn(conn, c.msgType)
-	return c.conn, nil
-}
-
-func (c *WSClient) Close() {
-	c.conn.Close()
+	return NewWSConn(conn, c.msgType), nil
 }

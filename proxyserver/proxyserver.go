@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"websocket_proxy/network"
@@ -33,12 +34,14 @@ type ProxyServer struct {
 	*options.TokenOptions
 	*options.WSClientOptions
 	options.IRegistryOptions
-	registry     registry.IRegistry
-	tokenManager *TokenManager
-	wsServer     *network.WSServer
-	httpServer   *network.HttpServer
-	connWg       sync.WaitGroup
-	gateManager  *network.WSClientManager
+	registry       registry.IRegistry
+	tokenManager   *TokenManager
+	wsServer       *network.WSServer
+	httpServer     *network.HttpServer
+	connCtxManager *ConnContextManager
+	lastConnNum    int
+	connWg         sync.WaitGroup
+	taskWg         sync.WaitGroup
 }
 
 func NewProxyServer(serverID int, opts *options.Options) *ProxyServer {
@@ -53,88 +56,110 @@ func NewProxyServer(serverID int, opts *options.Options) *ProxyServer {
 		tokenManager:     &TokenManager{},
 		wsServer:         network.NewWSServer(serverOpts),
 		httpServer:       network.NewHttpServer(serverOpts),
-		gateManager:      network.NewWSClientManager(),
+		connCtxManager:   NewConnContextManager(),
 	}
 }
 
 func (ps *ProxyServer) registerHandlers() {
 	ps.httpServer.AddRoute("/token", ps.handleGameSrvToken, "POST")
-	ps.wsServer.AddRoute("/connect/{loginTempID}", ps.handleClientConnect)
-}
-
-func (ps *ProxyServer) respond(w http.ResponseWriter, message string, err error) {
-	fmt.Fprintf(w, message)
-	if err != nil {
-		log.Printf("Error: %v", err) // 打印详细的错误日志
-	}
+	ps.wsServer.AddRoute("/{loginTempID}", ps.handleClientConnect)
 }
 
 // 接收游戏服务器token
 func (ps *ProxyServer) handleGameSrvToken(w http.ResponseWriter, r *http.Request) {
-	t, err := ps.tokenManager.createTokenWithRequest(r, ps.TokenValidTime)
+	token, err := ps.tokenManager.createTokenWithRequest(r, ps.TokenValidTime)
 	if err != nil {
-		ps.respond(w, "TOKEN CREATE FAIL", err)
+		util.RespondWithError(w, "TOKEN CREATE FAIL", err)
 		return
 	}
 
-	if err = t.check(); err != nil {
-		ps.respond(w, "TOKEN INVALID", err)
+	if err = token.check(); err != nil {
+		util.RespondWithError(w, "TOKEN INVALID", err)
 		return
 	}
 
-	if _, exist := ps.tokenManager.get(t.LoginTempID); exist {
-		ps.respond(w, "TOKEN EXISTS", err)
+	if _, exist := ps.tokenManager.get(token.LoginTempID); exist {
+		util.RespondWithError(w, "TOKEN EXISTS", err)
 		return
 	}
-	ps.tokenManager.add(t)
-	ps.respond(w, "OK", nil)
+	ps.tokenManager.add(token)
+	util.RespondWithError(w, "OK", nil)
 }
 
 // url : https://website/token
 func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	loginTempID, err := util.StrToUint32(vars["loginTempID"])
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	t, exist := ps.tokenManager.get(loginTempID)
-	if !exist {
-		log.Println("Failed to find token:", loginTempID)
-		return
-	}
-	ps.tokenManager.delete(loginTempID)
-
-	log.Println("Connecting to zone:", t.info())
-
-	conn, err := ps.wsServer.UpgradeConnection(w, r, nil)
-	if err != nil {
-		log.Println("Failed to upgrade connection:", err, t.info())
-		return
-	}
-
 	ps.connWg.Add(1)
 	defer ps.connWg.Done()
 
-	gateAddr := fmt.Sprintf("ws://%s:%d", t.GateIp, t.GatePort)
+	token, err := ps.verifyConnection(w, r)
+	if err != nil {
+		log.Printf("Failed to verify connection: %s", err)
+		return
+	}
+	log.Printf("Connecting to zone, %s", token)
+
+	clientConn, err := ps.upgradeConnection(w, r)
+	if err != nil {
+		log.Printf("Failed to upgrade connection: %s", token)
+		return
+	}
+
+	gateConn, err := ps.connectToGateway(token)
+	if err != nil {
+		clientConn.Close()
+		log.Printf("Failed to connect to gateway: %s,%s", err, token)
+		return
+	}
+
+	connCtx := ps.manageConnection(clientConn, gateConn, token)
+
+	go ps.forwardWSMessage(connCtx)
+
+	log.Printf("Connected to GateServer, begin forward, %s,client:%s", token, clientConn.RemoteAddr())
+}
+
+func (ps *ProxyServer) verifyConnection(w http.ResponseWriter, r *http.Request) (*Token, error) {
+	vars := mux.Vars(r)
+	loginTempID, err := util.StrToUint32(vars["loginTempID"])
+	if err != nil {
+		return nil, err
+	}
+	t, exist := ps.tokenManager.get(loginTempID)
+	if !exist {
+		return nil, fmt.Errorf("failed to find token: %d", loginTempID)
+	}
+	ps.tokenManager.delete(loginTempID)
+	return t, nil
+}
+
+func (ps *ProxyServer) upgradeConnection(w http.ResponseWriter, r *http.Request) (*network.WSConn, error) {
+	conn, err := ps.wsServer.UpgradeConnection(w, r, nil)
+	if err != nil {
+		return nil, err
+	}
+	return network.NewWSConn(conn, ps.WSClientOptions.MsgType), nil
+}
+
+func (ps *ProxyServer) connectToGateway(token *Token) (*network.WSConn, error) {
+	gateAddr := fmt.Sprintf("ws://%s:%d", token.GateIp, token.GatePort)
 	wsClient := network.NewWSClient(ps.WSClientOptions, gateAddr)
 	gateConn, err := wsClient.Connect()
 	if err != nil {
-		log.Println("Failed to connect to GatewayServer:", err, t.info())
-		conn.Close()
-		return
+		return nil, err
 	}
-	ps.gateManager.Add(wsClient)
-
-	clientConn := network.NewWSConn(conn, ps.WSClientOptions.MsgType)
-	ps.wsServer.AddConn(clientConn)
-
-	log.Println("Connected to gateServer, begin forward:", t.info(), "remote:", conn.RemoteAddr())
-	go ps.forwardWSMessage(clientConn, gateConn)
+	return gateConn, nil
 }
 
-func (ps *ProxyServer) forwardWSMessage(clientConn, gateConn *network.WSConn) {
+func (ps *ProxyServer) manageConnection(clientConn, gateConn *network.WSConn, token *Token) *ConnContext {
+	connCtx := NewConnContext(clientConn, gateConn, token)
+	ps.connCtxManager.Add(connCtx)
+	return connCtx
+}
+
+func (ps *ProxyServer) forwardWSMessage(connCtx *ConnContext) {
+	ps.taskWg.Add(1)
+	defer ps.taskWg.Done()
+
 	var size int
 	if ps.BufferSize == 0 {
 		size = 128
@@ -146,15 +171,16 @@ func (ps *ProxyServer) forwardWSMessage(clientConn, gateConn *network.WSConn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
+	gateConn := connCtx.gateConn
+	clientConn := connCtx.clientConn
+
 	// Client -> Gate
 	go func() {
 		defer gateConn.Close()
 		defer wg.Done()
 		_, err := io.CopyBuffer(gateConn, clientConn, buf)
-		if err != nil {
-			log.Println("Error copying from client to gateway:", err)
-		} else {
-			log.Println("No Copy from client to gateway")
+		if err != nil && !util.IsClosedNetworkError(err) {
+			log.Printf("Error copying from client to gateway: %s", err)
 		}
 	}()
 
@@ -163,23 +189,46 @@ func (ps *ProxyServer) forwardWSMessage(clientConn, gateConn *network.WSConn) {
 		defer clientConn.Close()
 		defer wg.Done()
 		_, err := io.CopyBuffer(clientConn, gateConn, buf)
-		if err != nil {
-			log.Println("Error copying from gateway to client:", err)
-		} else {
-			log.Println("No Copy from gateway to client")
+		if err != nil && !util.IsClosedNetworkError(err) {
+			log.Printf("Error copying from gateway to client: %s", err)
 		}
 	}()
 
 	wg.Wait()
-	ps.gateManager.RemoveByConn(gateConn)
-	ps.wsServer.RemoveConn(clientConn)
+	connCtx.Close()
+	ps.connCtxManager.Remove(connCtx)
 }
 
-func (ps *ProxyServer) Run() {
-	ps.registerHandlers()
-	ps.httpServer.Run()
-	ps.wsServer.Run()
+func (ps *ProxyServer) GetKey() string {
+	return fmt.Sprintf("%s%d", ps.GetKeyPrefix(), ps.ServerID)
+}
 
+func (ps *ProxyServer) updateToRegistry(start bool) {
+	connNum := ps.connCtxManager.GetConnNum()
+	if !start && ps.lastConnNum == connNum {
+		return
+	}
+	ps.lastConnNum = connNum
+	info := ServerInfo{
+		ServerID:     ps.ServerID,
+		ServerIP:     ps.ServerIP,
+		ServerDomain: ps.ServerDomain,
+		TokenPort:    ps.TokenPort,
+		ClientPort:   ps.ClientPort,
+		ConnNum:      connNum,
+		SecureFlag:   ps.SecureFlag,
+	}
+	if ps.registry.GetType() == options.REDIS {
+
+	}
+
+	err := ps.registry.PutDataWithTTL(ps.GetKey(), info, ps.GetKeyExpireTime())
+	if err != nil {
+		log.Printf("Failed to update proxy server info: %s", err)
+	}
+}
+
+func (ps *ProxyServer) runTicker() {
 	tickerToken := time.NewTicker(time.Second * time.Duration(ps.CheckTokenDuration))
 	defer tickerToken.Stop()
 	go func() {
@@ -192,47 +241,48 @@ func (ps *ProxyServer) Run() {
 	defer tickerReg.Stop()
 	go func() {
 		for range tickerReg.C {
-			ps.updateToRegistry()
+			ps.updateToRegistry(false)
 		}
 	}()
+}
 
-	log.Printf("Server run success, Server:%s,Token:%s,Registry:%s", ps.ServerOptions, ps.TokenOptions, ps.IRegistryOptions)
+func (ps *ProxyServer) wait() {
+	ps.connWg.Wait()
+	ps.taskWg.Wait()
+}
+
+func (ps *ProxyServer) Run() {
+	ps.registerHandlers()
+	ps.httpServer.Run()
+	ps.wsServer.Run()
+
+	ps.updateToRegistry(true)
+	ps.runTicker()
+
+	log.Printf("Server run success, %s,%s,%s", ps.ServerOptions, ps.TokenOptions, ps.IRegistryOptions)
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, os.Kill)
+
+	//go func() {
+	//	time.Sleep(20 * time.Second)
+	//	fmt.Println("Simulating Ctrl+C (SIGINT)...")
+	//	c <- syscall.SIGINT
+	//}()
+
+	signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
 	sig := <-c
-	log.Println("Server closing down, signal", sig)
+	log.Printf("Server closing down, signal: %s", sig)
 }
 
 func (ps *ProxyServer) Close() {
 	err := ps.registry.DeleteData(ps.GetKey())
 	if err != nil {
-		log.Println("Server close", err)
+		log.Printf("Server close: %s", err)
 	}
 	ps.registry.Close()
+	ps.connCtxManager.Destroy()
 	ps.httpServer.Close()
 	ps.wsServer.Close()
-	ps.gateManager.Destroy()
-	ps.connWg.Wait()
+	ps.wait()
 	log.Println("Server close success")
-}
-
-func (ps *ProxyServer) updateToRegistry() {
-	info := ServerInfo{
-		ServerID:     ps.ServerID,
-		ServerIP:     ps.ServerIP,
-		ServerDomain: ps.ServerDomain,
-		TokenPort:    ps.TokenPort,
-		ClientPort:   ps.ClientPort,
-		ConnNum:      ps.gateManager.GetConnNum(),
-		SecureFlag:   ps.SecureFlag,
-	}
-	err := ps.registry.PutDataWithTTL(ps.GetKey(), info, ps.GetKeyExpireTime())
-	if err != nil {
-		log.Println("Failed to update proxy server info:", err)
-	}
-}
-
-func (ps *ProxyServer) GetKey() string {
-	return fmt.Sprintf("%s%d", ps.GetKeyPrefix(), ps.ServerID)
 }

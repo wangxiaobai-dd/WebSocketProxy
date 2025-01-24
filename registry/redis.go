@@ -29,15 +29,19 @@ func NewRedisClient(opts *options.RedisOptions) *RedisClient {
 	return &RedisClient{client}
 }
 
+func (r *RedisClient) GetType() string {
+	return options.REDIS
+}
+
 func (r *RedisClient) PutData(key string, value interface{}) error {
 	data, err := json.Marshal(value)
 	if err != nil {
-		return fmt.Errorf("failed to marshal data: %v", err)
+		return err
 	}
 
 	err = r.Set(context.Background(), key, data, 0).Err()
 	if err != nil {
-		return fmt.Errorf("failed to set data to Redis: %v", err)
+		return err
 	}
 	return nil
 }
@@ -45,12 +49,12 @@ func (r *RedisClient) PutData(key string, value interface{}) error {
 func (r *RedisClient) PutDataWithTTL(key string, value interface{}, ttl int) error {
 	data, err := json.Marshal(value)
 	if err != nil {
-		return fmt.Errorf("failed to marshal data: %v", err)
+		return err
 	}
 
 	err = r.SetEx(context.Background(), key, data, time.Duration(ttl)*time.Second).Err()
 	if err != nil {
-		return fmt.Errorf("failed to set data to Redis with TTL: %v", err)
+		return err
 	}
 
 	return nil
@@ -62,13 +66,13 @@ func (r *RedisClient) GetData(key string, result interface{}) error {
 		if errors.Is(err, redis.Nil) {
 			return nil
 		} else {
-			return fmt.Errorf("failed to get data from Redis: %v", err)
+			return err
 		}
 	}
 
 	err = json.Unmarshal([]byte(data), result)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal data: %v", err)
+		return err
 	}
 	return nil
 }
@@ -82,12 +86,12 @@ func (r *RedisClient) GetDataWithPrefix(prefix string) (map[string]string, error
 		key := iter.Val()
 		val, err := r.Get(ctx, key).Result()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get data for key %s: %v", key, err)
+			return nil, fmt.Errorf("failed to get data for key %s, %v", key, err)
 		}
 		data[key] = val
 	}
 	if err := iter.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan keys with prefix %s: %v", prefix, err)
+		return nil, fmt.Errorf("failed to scan keys with prefix %s, %v", prefix, err)
 	}
 	return data, nil
 }
@@ -95,9 +99,22 @@ func (r *RedisClient) GetDataWithPrefix(prefix string) (map[string]string, error
 func (r *RedisClient) DeleteData(key string) error {
 	err := r.Del(context.Background(), key).Err()
 	if err != nil {
-		return fmt.Errorf("failed to delete data from Redis: %v", err)
+		return err
 	}
 	return nil
+}
+
+func (r *RedisClient) ZAddData(key string, score float64, value interface{}) error {
+	err := r.ZAdd(context.Background(), key, redis.Z{Score: score, Member: value}).Err()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RedisClient) ZRemData(key string, value interface{}) error {
+	err := r.ZRem(context.Background(), key, value).Err()
+	return err
 }
 
 func (r *RedisClient) Close() {

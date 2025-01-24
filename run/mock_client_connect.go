@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	url := fmt.Sprintf("wss://%s/connect/%d", configs.TestClientConnAddr, configs.TestLoginTempID)
+	url := fmt.Sprintf("wss://%s/%d", configs.TestClientConnAddr, configs.TestLoginTempID)
 
 	// 创建 HTTP 客户端
 	dialer := &websocket.Dialer{

@@ -2,7 +2,6 @@ package proxyserver
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,12 +20,12 @@ type Token struct {
 
 func (t *Token) check() error {
 	if t.LoginTempID == 0 || t.AccID == 0 || t.ZoneID == 0 || len(t.GateIp) == 0 || t.GatePort == 0 {
-		return errors.New("Invalid token: " + t.info())
+		return fmt.Errorf("invalid token:%s", t)
 	}
 	return nil
 }
 
-func (t *Token) info() string {
+func (t *Token) String() string {
 	return fmt.Sprintf("loginTempID:%d,accid:%d,zoneID:%d,gateIp:%s,gatePort:%d", t.LoginTempID, t.AccID, t.ZoneID, t.GateIp, t.GatePort)
 }
 
@@ -50,7 +49,7 @@ func (tm *TokenManager) createTokenWithRequest(r *http.Request, tokenValidTime i
 
 func (tm *TokenManager) add(t *Token) {
 	tm.tokens.Store(t.LoginTempID, t)
-	log.Printf("Add token:%v", t.info())
+	log.Printf("Add token, %s", t)
 }
 
 func (tm *TokenManager) get(loginTempID uint32) (*Token, bool) {
@@ -70,7 +69,7 @@ func (tm *TokenManager) cleanExpiredTokens() {
 		t, ok := value.(*Token)
 		if ok && t.isExpired() {
 			tm.tokens.Delete(key)
-			log.Printf("Token expired:%v", t.LoginTempID)
+			log.Printf("Token expired:%d", t.LoginTempID)
 		}
 		return true
 	})
