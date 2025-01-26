@@ -245,15 +245,9 @@ func (ps *ProxyServer) wait() {
 }
 
 func (ps *ProxyServer) Run() {
-	ctx, cancel := context.WithCancel(context.Background())
+	//todo 游戏服务器使用 redis zrange 得到最少连接的服务器 ，找不到服务器信息就zrem
 
-	defer func() {
-		if err := recover(); err != nil {
-			log.Printf("Server generates panic: %v", err)
-			cancel()
-			ps.Close()
-		}
-	}()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	ps.registerHandlers()
 	ps.httpServer.Run()
@@ -265,7 +259,7 @@ func (ps *ProxyServer) Run() {
 
 	c := make(chan os.Signal, 1)
 	//go func() {
-	//	time.Sleep(20 * time.Second)
+	//	time.Sleep(2 * time.Second)
 	//	fmt.Println("Simulating Ctrl+C (SIGINT)...")
 	//	c <- syscall.SIGINT
 	//}()
