@@ -48,26 +48,14 @@ func (etcd *EtcdClient) GetType() string {
 	return options.ETCD
 }
 
-func (etcd *EtcdClient) PutData(key string, value interface{}) error {
-	data, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
+func (etcd *EtcdClient) PutServer(prefix string, info ServerInfo, ttl int) error {
+	key := fmt.Sprintf("%s%d", prefix, info.ServerID)
 
-	_, err = etcd.Put(context.Background(), key, string(data))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (etcd *EtcdClient) PutDataWithTTL(key string, value interface{}, ttl int) error {
 	leaseResp, err := etcd.Grant(context.Background(), int64(ttl))
 	if err != nil {
 		return fmt.Errorf("failed to create lease: %v", err)
 	}
-
-	data, err := json.Marshal(value)
+	data, err := json.Marshal(info)
 	if err != nil {
 		return err
 	}
@@ -78,39 +66,30 @@ func (etcd *EtcdClient) PutDataWithTTL(key string, value interface{}, ttl int) e
 	return nil
 }
 
-func (etcd *EtcdClient) GetData(key string, result interface{}) error {
-	resp, err := etcd.Get(context.Background(), key)
-	if err != nil {
-		return err
-	}
-	if len(resp.Kvs) == 0 {
-		return fmt.Errorf("failed to find key, %s", key)
-	}
-
-	err = json.Unmarshal(resp.Kvs[0].Value, result)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal data: %v", err)
-	}
-	return nil
-}
-
-func (etcd *EtcdClient) GetDataWithPrefix(prefix string) (map[string]string, error) {
+func (etcd *EtcdClient) GetAllServer(prefix string) map[string]ServerInfo {
 	resp, err := etcd.Get(context.Background(), prefix, clientv3.WithPrefix())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get data from etcd with prefix %s: %v", prefix, err)
+		log.Printf("failed to get data from etcd with prefix %s: %v", prefix, err)
+		return nil
 	}
 
-	data := make(map[string]string)
+	data := make(map[string]ServerInfo)
 	for _, kv := range resp.Kvs {
-		data[string(kv.Key)] = string(kv.Value)
+		info := &ServerInfo{}
+		if err = json.Unmarshal(kv.Value, info); err != nil {
+			log.Printf("failed to unmarshal server info: %v", err)
+			return nil
+		}
+		data[string(kv.Key)] = *info
 	}
-	return data, nil
+	return data
 }
 
-func (etcd *EtcdClient) DeleteData(key string) error {
+func (etcd *EtcdClient) DeleteServer(prefix string, serverID int) error {
+	key := fmt.Sprintf("%s%d", prefix, serverID)
 	_, err := etcd.Delete(context.Background(), key)
 	if err != nil {
-		return fmt.Errorf("failed to delete data from etcd: %v", err)
+		return fmt.Errorf("failed to delete server from etcd: %v", err)
 	}
 	return nil
 }

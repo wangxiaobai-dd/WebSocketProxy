@@ -41,5 +41,4 @@ func init() {
 func main() {
 	server := proxyserver.NewProxyServer(*serverID, opts)
 	server.Run()
-	server.Close()
 }

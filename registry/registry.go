@@ -8,11 +8,9 @@ import (
 
 type IRegistry interface {
 	GetType() string
-	PutData(key string, value interface{}) error
-	PutDataWithTTL(key string, value interface{}, ttl int) error
-	GetData(key string, result interface{}) error
-	GetDataWithPrefix(prefix string) (map[string]string, error)
-	DeleteData(key string) error
+	PutServer(prefix string, info ServerInfo, ttl int) error
+	GetAllServer(prefix string) map[string]ServerInfo
+	DeleteServer(prefix string, serverID int) error
 	Close()
 }
 

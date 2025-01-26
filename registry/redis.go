@@ -3,7 +3,6 @@ package registry
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -33,88 +32,61 @@ func (r *RedisClient) GetType() string {
 	return options.REDIS
 }
 
-func (r *RedisClient) PutData(key string, value interface{}) error {
-	data, err := json.Marshal(value)
+func (r *RedisClient) PutServer(prefix string, info ServerInfo, ttl int) error {
+	err := r.ZAdd(context.Background(), getServerConnSetKey(prefix), redis.Z{Score: float64(info.ConnNum), Member: info.ServerID}).Err()
 	if err != nil {
 		return err
 	}
-
-	err = r.Set(context.Background(), key, data, 0).Err()
+	data, err := json.Marshal(info)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (r *RedisClient) PutDataWithTTL(key string, value interface{}, ttl int) error {
-	data, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-
+	key := getServerKey(prefix, info.ServerID)
 	err = r.SetEx(context.Background(), key, data, time.Duration(ttl)*time.Second).Err()
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func (r *RedisClient) GetData(key string, result interface{}) error {
-	data, err := r.Get(context.Background(), key).Result()
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return nil
-		} else {
-			return err
-		}
-	}
-
-	err = json.Unmarshal([]byte(data), result)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *RedisClient) GetDataWithPrefix(prefix string) (map[string]string, error) {
+func (r *RedisClient) GetAllServer(prefix string) map[string]ServerInfo {
 	ctx := context.Background()
 	iter := r.Scan(ctx, 0, prefix+"*", 0).Iterator()
 
-	data := make(map[string]string)
+	data := make(map[string]ServerInfo)
 	for iter.Next(ctx) {
 		key := iter.Val()
 		val, err := r.Get(ctx, key).Result()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get data for key %s, %v", key, err)
+			log.Printf("failed to get data, key:%s, err:%v", key, err)
+			continue
 		}
-		data[key] = val
+		info := &ServerInfo{}
+		err = json.Unmarshal([]byte(val), info)
+		if err != nil {
+			log.Printf("failed to unmarshal data for key %s, %v", key, err)
+			continue
+		}
+		data[key] = *info
 	}
 	if err := iter.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan keys with prefix %s, %v", prefix, err)
+		log.Printf("failed to scan keys with prefix %s, %v", prefix, err)
 	}
-	return data, nil
+	return data
 }
 
-func (r *RedisClient) DeleteData(key string) error {
-	err := r.Del(context.Background(), key).Err()
+func (r *RedisClient) DeleteServer(prefix string, serverID int) error {
+	key := getServerKey(prefix, serverID)
+
+	err := r.ZRem(context.Background(), getServerConnSetKey(prefix), serverID).Err()
 	if err != nil {
-		return err
+		log.Printf("failed to zrem server prefix:%s, err:%v", prefix, err)
+	}
+	err = r.Del(context.Background(), key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete server prefix:%s, err:%v", prefix, err)
 	}
 	return nil
-}
-
-func (r *RedisClient) ZAddData(key string, score float64, value interface{}) error {
-	err := r.ZAdd(context.Background(), key, redis.Z{Score: score, Member: value}).Err()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *RedisClient) ZRemData(key string, value interface{}) error {
-	err := r.ZRem(context.Background(), key, value).Err()
-	return err
 }
 
 func (r *RedisClient) Close() {

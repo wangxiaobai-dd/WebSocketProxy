@@ -1,6 +1,7 @@
 package proxyserver
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -18,16 +19,6 @@ import (
 
 	"github.com/gorilla/mux"
 )
-
-type ServerInfo struct {
-	ServerID     int    `json:"serverID"`
-	ServerIP     string `json:"serverIP"`
-	ServerDomain string `json:"serverDomain"`
-	TokenPort    int    `json:"tokenPort"`
-	ClientPort   int    `json:"clientPort"`
-	ConnNum      int    `json:"connNum"`
-	SecureFlag   bool   `json:"secureFlag"`
-}
 
 type ProxyServer struct {
 	*options.ServerOptions
@@ -199,17 +190,13 @@ func (ps *ProxyServer) forwardWSMessage(connCtx *ConnContext) {
 	ps.connCtxManager.Remove(connCtx)
 }
 
-func (ps *ProxyServer) GetKey() string {
-	return fmt.Sprintf("%s%d", ps.GetKeyPrefix(), ps.ServerID)
-}
-
 func (ps *ProxyServer) updateToRegistry(start bool) {
 	connNum := ps.connCtxManager.GetConnNum()
 	if !start && ps.lastConnNum == connNum {
 		return
 	}
 	ps.lastConnNum = connNum
-	info := ServerInfo{
+	info := registry.ServerInfo{
 		ServerID:     ps.ServerID,
 		ServerIP:     ps.ServerIP,
 		ServerDomain: ps.ServerDomain,
@@ -218,30 +205,36 @@ func (ps *ProxyServer) updateToRegistry(start bool) {
 		ConnNum:      connNum,
 		SecureFlag:   ps.SecureFlag,
 	}
-	if ps.registry.GetType() == options.REDIS {
-
-	}
-
-	err := ps.registry.PutDataWithTTL(ps.GetKey(), info, ps.GetKeyExpireTime())
+	err := ps.registry.PutServer(ps.GetKeyPrefix(), info, ps.GetKeyExpireTime())
 	if err != nil {
 		log.Printf("Failed to update proxy server info: %s", err)
 	}
 }
 
-func (ps *ProxyServer) runTicker() {
-	tickerToken := time.NewTicker(time.Second * time.Duration(ps.CheckTokenDuration))
-	defer tickerToken.Stop()
+func (ps *ProxyServer) runTicker(ctx context.Context) {
 	go func() {
-		for range tickerToken.C {
-			ps.tokenManager.cleanExpiredTokens()
+		tickerToken := time.NewTicker(time.Second * time.Duration(ps.CheckTokenDuration))
+		defer tickerToken.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tickerToken.C:
+				ps.tokenManager.cleanExpiredTokens()
+			}
 		}
 	}()
 
-	tickerReg := time.NewTicker(time.Second * time.Duration(ps.GetUpdateDuration()))
-	defer tickerReg.Stop()
 	go func() {
-		for range tickerReg.C {
-			ps.updateToRegistry(false)
+		tickerReg := time.NewTicker(time.Second * time.Duration(ps.GetUpdateDuration()))
+		defer tickerReg.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tickerReg.C:
+				ps.updateToRegistry(false)
+			}
 		}
 	}()
 }
@@ -252,17 +245,25 @@ func (ps *ProxyServer) wait() {
 }
 
 func (ps *ProxyServer) Run() {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("Server generates panic: %v", err)
+			cancel()
+			ps.Close()
+		}
+	}()
+
 	ps.registerHandlers()
 	ps.httpServer.Run()
 	ps.wsServer.Run()
-
 	ps.updateToRegistry(true)
-	ps.runTicker()
+	ps.runTicker(ctx)
 
 	log.Printf("Server run success, %s,%s,%s", ps.ServerOptions, ps.TokenOptions, ps.IRegistryOptions)
 
 	c := make(chan os.Signal, 1)
-
 	//go func() {
 	//	time.Sleep(20 * time.Second)
 	//	fmt.Println("Simulating Ctrl+C (SIGINT)...")
@@ -272,12 +273,15 @@ func (ps *ProxyServer) Run() {
 	signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
 	sig := <-c
 	log.Printf("Server closing down, signal: %s", sig)
+
+	cancel()
+	ps.Close()
 }
 
 func (ps *ProxyServer) Close() {
-	err := ps.registry.DeleteData(ps.GetKey())
+	err := ps.registry.DeleteServer(ps.GetKeyPrefix(), ps.ServerID)
 	if err != nil {
-		log.Printf("Server close: %s", err)
+		log.Println(err)
 	}
 	ps.registry.Close()
 	ps.connCtxManager.Destroy()
