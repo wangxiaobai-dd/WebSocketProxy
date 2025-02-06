@@ -1,6 +1,9 @@
 package proxyserver
 
-import "sync"
+import (
+	"log"
+	"sync"
+)
 
 type ConnContextManager struct {
 	ctxSet ConnContextSet
@@ -25,7 +28,9 @@ func (m *ConnContextManager) Add(ctx *ConnContext) {
 func (m *ConnContextManager) Remove(ctx *ConnContext) {
 	m.ctxMu.Lock()
 	delete(m.ctxSet, ctx)
+	size := len(m.ctxSet)
 	m.ctxMu.Unlock()
+	log.Printf("Remove Conn, loginTempID:%d, conn size:%d", ctx.token.LoginTempID, size)
 }
 
 func (m *ConnContextManager) GetConnNum() int {

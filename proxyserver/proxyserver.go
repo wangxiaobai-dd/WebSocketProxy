@@ -30,7 +30,6 @@ type ProxyServer struct {
 	wsServer       *network.WSServer
 	httpServer     *network.HttpServer
 	connCtxManager *ConnContextManager
-	lastConnNum    int
 	connWg         sync.WaitGroup
 	taskWg         sync.WaitGroup
 }
@@ -106,7 +105,7 @@ func (ps *ProxyServer) handleClientConnect(w http.ResponseWriter, r *http.Reques
 
 	go ps.forwardWSMessage(connCtx)
 
-	log.Printf("Connected to GateServer, begin forward, %s,client:%s", token, clientConn.RemoteAddr())
+	log.Printf("Begin forward, %s,client:%s", token, clientConn.RemoteAddr())
 }
 
 func (ps *ProxyServer) verifyConnection(w http.ResponseWriter, r *http.Request) (*Token, error) {
@@ -190,12 +189,8 @@ func (ps *ProxyServer) forwardWSMessage(connCtx *ConnContext) {
 	ps.connCtxManager.Remove(connCtx)
 }
 
-func (ps *ProxyServer) updateToRegistry(start bool) {
+func (ps *ProxyServer) updateToRegistry(force bool) {
 	connNum := ps.connCtxManager.GetConnNum()
-	if !start && ps.lastConnNum == connNum {
-		return
-	}
-	ps.lastConnNum = connNum
 	info := registry.ServerInfo{
 		ServerID:     ps.ServerID,
 		ServerIP:     ps.ServerIP,
@@ -245,8 +240,6 @@ func (ps *ProxyServer) wait() {
 }
 
 func (ps *ProxyServer) Run() {
-	//todo 游戏服务器使用 redis zrange 得到最少连接的服务器 ，找不到服务器信息就zrem
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ps.registerHandlers()

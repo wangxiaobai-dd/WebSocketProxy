@@ -3,25 +3,32 @@ package util
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
+
+	"github.com/gorilla/websocket"
 )
 
 func IsClosedNetworkError(err error) bool {
 	if err == nil {
 		return false
 	}
-	var opError *net.OpError
-	if errors.As(err, &opError) {
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
 		return true
 	}
-	//var errno syscall.Errno
-	//if errors.As(err, &errno) {
-	//	if errors.Is(errno, syscall.EPIPE) || errors.Is(errno, syscall.ECONNRESET) {
-	//		return true
-	//	}
-	//}
+
+	var wsErr *websocket.CloseError
+	if errors.As(err, &wsErr) && wsErr.Code == websocket.CloseNormalClosure {
+		return true
+
+	}
+
+	if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
+		return true
+	}
 	return false
 }
 

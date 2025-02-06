@@ -1,7 +1,6 @@
 package proxyserver
 
 import (
-	"log"
 	"sync"
 
 	"websocket_proxy/network"
@@ -22,6 +21,6 @@ func (c *ConnContext) Close() {
 	c.Do(func() {
 		c.clientConn.Close()
 		c.gateConn.Close()
-		log.Printf("ConnContext close, %s", c.token)
+		//log.Printf("Close conn, loginTempID:%d", c.token.LoginTempID)
 	})
 }
