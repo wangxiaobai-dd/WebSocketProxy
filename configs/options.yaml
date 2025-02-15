@@ -59,7 +59,7 @@ Redis:
   Addr: "127.0.0.1:6379"
   Registry:
     Key: "proxyserver"
-    Password: ""
+    Password: "123456"
     KeyExpireTime: 200
     UpdateDuration: 5
 

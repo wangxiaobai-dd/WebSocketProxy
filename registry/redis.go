@@ -19,6 +19,10 @@ func NewRedisClient(opts *options.RedisOptions) *RedisClient {
 	client := redis.NewClient(&redis.Options{
 		Addr:     opts.Addr,
 		Password: opts.Password,
+		OnConnect: func(ctx context.Context, cn *redis.Conn) error {
+			log.Println("Redis connect success")
+			return nil
+		},
 	})
 	_, err := client.Ping(context.Background()).Result()
 	if err != nil {
@@ -33,7 +37,8 @@ func (r *RedisClient) GetType() string {
 }
 
 func (r *RedisClient) PutServer(prefix string, info ServerInfo, ttl int) error {
-	err := r.ZAdd(context.Background(), getServerConnSetKey(prefix), redis.Z{Score: float64(info.ConnNum), Member: info.ServerID}).Err()
+	key := getServerKey(prefix, info.ServerID)
+	err := r.ZAdd(context.Background(), getServerConnSetKey(prefix), redis.Z{Score: float64(info.ConnNum), Member: key}).Err()
 	if err != nil {
 		return err
 	}
@@ -41,7 +46,6 @@ func (r *RedisClient) PutServer(prefix string, info ServerInfo, ttl int) error {
 	if err != nil {
 		return err
 	}
-	key := getServerKey(prefix, info.ServerID)
 	err = r.SetEx(context.Background(), key, data, time.Duration(ttl)*time.Second).Err()
 	if err != nil {
 		return err

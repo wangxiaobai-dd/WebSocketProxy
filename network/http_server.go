@@ -13,16 +13,22 @@ import (
 )
 
 type HttpServer struct {
-	addr   string
-	router *mux.Router
-	server *http.Server
+	addr       string
+	secureFlag bool
+	certFile   string
+	keyFile    string
+	router     *mux.Router
+	server     *http.Server
 }
 
 func NewHttpServer(opts *options.ServerOptions) *HttpServer {
 	addr := fmt.Sprintf("%s:%d", opts.ServerIP, opts.TokenPort)
 	return &HttpServer{
-		addr:   addr,
-		router: mux.NewRouter(),
+		addr:       addr,
+		router:     mux.NewRouter(),
+		secureFlag: opts.SecureFlag,
+		certFile:   opts.CertFile,
+		keyFile:    opts.KeyFile,
 	}
 }
 
@@ -37,8 +43,14 @@ func (hs *HttpServer) Run() {
 	}
 
 	go func() {
-		if err := hs.server.ListenAndServe(); !util.IsClosedServerError(err) {
-			log.Fatalf("HTTP server failed to start, %s", err)
+		if hs.secureFlag {
+			if err := hs.server.ListenAndServeTLS(hs.certFile, hs.keyFile); !util.IsClosedServerError(err) {
+				log.Fatalf("HTTPS server failed to start, %s", err)
+			}
+		} else {
+			if err := hs.server.ListenAndServe(); !util.IsClosedServerError(err) {
+				log.Fatalf("HTTP server failed to start, %s", err)
+			}
 		}
 	}()
 

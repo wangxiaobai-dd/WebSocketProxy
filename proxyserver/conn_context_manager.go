@@ -30,7 +30,7 @@ func (m *ConnContextManager) Remove(ctx *ConnContext) {
 	delete(m.ctxSet, ctx)
 	size := len(m.ctxSet)
 	m.ctxMu.Unlock()
-	log.Printf("Remove Conn, loginTempID:%d, conn size:%d", ctx.token.LoginTempID, size)
+	log.Printf("Remove conn, loginTempID:%d, left conn size:%d", ctx.token.LoginTempID, size)
 }
 
 func (m *ConnContextManager) GetConnNum() int {
