@@ -2,13 +2,13 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/spf13/pflag"
 	"websocket_proxy/options"
 	"websocket_proxy/proxyserver"
-	"websocket_proxy/util"
 )
 
 var serverID *int
@@ -28,7 +28,7 @@ func init() {
 	}
 
 	if opts.Log.Console == false {
-		prefix := opts.Log.Path + opts.Log.LinkName + util.IntToStr(*serverID)
+		prefix := opts.Log.Path + opts.Log.LinkName + strconv.Itoa(*serverID)
 		writer, _ := rotatelogs.New(
 			prefix+".log.%Y%m%d-%H",
 			rotatelogs.WithLinkName(prefix+".log"),
