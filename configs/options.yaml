@@ -57,11 +57,13 @@ Etcd:
 # UpdateDuration: 更新 proxy 信息到 Redis 间隔
 Redis:
   Addr: "127.0.0.1:6379"
+  KeepAlive: 30
   Registry:
     Key: "proxyserver"
     Password: "123456"
     KeyExpireTime: 200
     UpdateDuration: 5
+
 
 # Log
 # Console: true 命令行输出

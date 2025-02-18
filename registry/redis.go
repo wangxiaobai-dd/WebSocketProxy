@@ -13,6 +13,7 @@ import (
 
 type RedisClient struct {
 	*redis.Client
+	stopChan chan struct{}
 }
 
 func NewRedisClient(opts *options.RedisOptions) *RedisClient {
@@ -24,12 +25,37 @@ func NewRedisClient(opts *options.RedisOptions) *RedisClient {
 			return nil
 		},
 	})
-	_, err := client.Ping(context.Background()).Result()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err := client.Ping(ctx).Err()
 	if err != nil {
 		log.Fatal("Failed to connect Redis client: ", err)
 		return nil
 	}
-	return &RedisClient{client}
+
+	redisClient := &RedisClient{
+		Client:   client,
+		stopChan: make(chan struct{}),
+	}
+
+	if opts.KeepAlive > 0 {
+		go func(stopChan chan struct{}) {
+			ticker := time.NewTicker(time.Duration(opts.KeepAlive) * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					if err := client.Ping(context.Background()).Err(); err != nil {
+						log.Printf("Redis keep-alive failed, err:%v", err)
+					}
+				case <-stopChan:
+					log.Printf("Redis keep-alive stopped")
+					return
+				}
+			}
+		}(redisClient.stopChan)
+	}
+	return redisClient
 }
 
 func (r *RedisClient) GetType() string {
@@ -80,9 +106,13 @@ func (r *RedisClient) GetAllServer(prefix string) map[string]ServerInfo {
 }
 
 func (r *RedisClient) DeleteServer(prefix string, serverID int) error {
+	err := r.Ping(context.Background()).Err()
+	if err != nil {
+		log.Printf("delete server, failed to ping, serverID:%d, err:%v", serverID, err)
+	}
 	key := getServerKey(prefix, serverID)
 
-	err := r.ZRem(context.Background(), getServerConnSetKey(prefix), serverID).Err()
+	err = r.ZRem(context.Background(), getServerConnSetKey(prefix), serverID).Err()
 	if err != nil {
 		log.Printf("failed to zrem server prefix:%s, err:%v", prefix, err)
 	}
@@ -94,5 +124,6 @@ func (r *RedisClient) DeleteServer(prefix string, serverID int) error {
 }
 
 func (r *RedisClient) Close() {
+	close(r.stopChan)
 	r.Client.Close()
 }
