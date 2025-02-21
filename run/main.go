@@ -16,7 +16,7 @@ var opts *options.Options
 
 func init() {
 	serverID = pflag.IntP("serverID", "i", 1, "Server ID to select configuration")
-	optionFile := pflag.StringP("option", "o", "configs/options.yaml", "Path to the JSON configuration file")
+	optionFile := pflag.StringP("option", "o", "configs/options.yaml", "Path to the yaml configuration file")
 	pflag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
